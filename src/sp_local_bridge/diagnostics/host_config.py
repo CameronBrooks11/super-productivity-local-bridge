@@ -30,20 +30,41 @@ def _resolve_mcp_command() -> str:
     """Resolve the absolute path to sp-local-bridge-mcp if possible.
 
     GUI-launched MCP hosts often do not inherit shell PATH, so we prefer
-    absolute paths. Falls back to bare command name if not found.
+    absolute paths. Resolution order:
+    1. Sibling of the current executable (same bin directory)
+    2. shutil.which (PATH lookup)
+    3. UV_TOOL_BIN_DIR or ~/.local/bin
+    4. Bare command name (fallback)
     """
-    # Check if on PATH
+    # 1. Sibling discovery: if this script was invoked by absolute path,
+    #    sp-local-bridge-mcp is likely in the same directory.
+    argv0 = sys.argv[0] if sys.argv else ""
+    if argv0 and os.path.isabs(argv0):
+        sibling = os.path.join(os.path.dirname(argv0), "sp-local-bridge-mcp")
+        if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+            return os.path.realpath(sibling)
+
+    # Also check __file__-based resolution (works in installed entry_points)
+    this_dir = os.path.dirname(os.path.abspath(__file__))
+    # Walk up to find the bin dir: __file__ is in .../sp_local_bridge/diagnostics/
+    # Entry points are in the same bin dir as python or the scripts dir
+    bin_from_file = os.path.join(this_dir, "..", "..", "..", "bin", "sp-local-bridge-mcp")
+    bin_from_file = os.path.normpath(bin_from_file)
+    if os.path.isfile(bin_from_file) and os.access(bin_from_file, os.X_OK):
+        return os.path.realpath(bin_from_file)
+
+    # 2. PATH lookup
     found = shutil.which("sp-local-bridge-mcp")
     if found:
         return os.path.realpath(found)
 
-    # Check uv tool bin default locations
+    # 3. Check uv tool bin default locations
     uv_bin = os.environ.get("UV_TOOL_BIN_DIR", os.path.expanduser("~/.local/bin"))
     candidate = os.path.join(uv_bin, "sp-local-bridge-mcp")
     if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
         return os.path.realpath(candidate)
 
-    # Fallback: bare command (user will need PATH configured)
+    # 4. Fallback: bare command (user will need PATH configured)
     return "sp-local-bridge-mcp"
 
 

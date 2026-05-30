@@ -7,6 +7,7 @@ set -euo pipefail
 DRY_RUN=false
 VERBOSE=false
 INSTALL_OK=true
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 usage() {
     cat <<EOF
@@ -82,25 +83,19 @@ resolve_tool_bin_dir() {
 }
 
 install_package() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
     if [[ "$DRY_RUN" == "true" ]]; then
-        action "[dry-run] Would install sp-local-bridge from: $script_dir"
-        action "[dry-run] Command: uv tool install --from \"$script_dir\" sp-local-bridge"
+        action "[dry-run] Would install sp-local-bridge from: $SCRIPT_DIR"
+        action "[dry-run] Command: uv tool install --reinstall --from \"$SCRIPT_DIR\" sp-local-bridge"
     else
         action "Installing sp-local-bridge..."
-        if uv tool install --from "$script_dir" sp-local-bridge 2>/dev/null; then
-            info "✓ sp-local-bridge installed"
+        # Always use --reinstall to guarantee a fresh build from source.
+        # Without it, uv may reuse a cached wheel for the same version string.
+        if uv tool install --reinstall --from "$SCRIPT_DIR" sp-local-bridge 2>/dev/null; then
+            info "✓ sp-local-bridge installed (fresh build)"
         else
-            # May already be installed — try reinstall
-            if uv tool install --from "$script_dir" --force sp-local-bridge 2>/dev/null; then
-                info "✓ sp-local-bridge reinstalled"
-            else
-                error "Could not install via 'uv tool install'."
-                error "Try manually: cd '$script_dir' && uv tool install --from . sp-local-bridge"
-                exit 1
-            fi
+            error "Could not install via 'uv tool install'."
+            error "Try manually: cd '$SCRIPT_DIR' && uv tool install --reinstall --from . sp-local-bridge"
+            exit 1
         fi
     fi
 }
@@ -138,9 +133,23 @@ verify_install() {
         echo "    export PATH=\"$bin_dir:\$PATH\""
         echo
         echo "  Or use absolute paths in host config (the default):"
-        echo "    sp-local-bridge-print-config claude-desktop"
+        echo "    $bin_dir/sp-local-bridge-print-config claude-desktop"
         echo
         INSTALL_OK=false
+    fi
+
+    # Behavioral assertion: verify installed code is current (not stale cache)
+    local config_cmd="$bin_dir/sp-local-bridge-print-config"
+    if [[ -x "$config_cmd" ]]; then
+        local help_out
+        help_out=$("$config_cmd" --help 2>&1 || true)
+        if [[ "$help_out" != *"--bare"* ]]; then
+            error "Installed sp-local-bridge-print-config is stale (missing --bare flag)."
+            error "Try: uv tool install --reinstall --from '$SCRIPT_DIR' sp-local-bridge"
+            INSTALL_OK=false
+        else
+            info "✓ installed code is current (behavioral check passed)"
+        fi
     fi
 }
 

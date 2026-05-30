@@ -14,7 +14,7 @@ cd super-productivity-local-bridge
 scripts/install.sh
 
 # Or directly with uv
-uv tool install --from . sp-local-bridge
+uv tool install --reinstall --from . sp-local-bridge
 ```
 
 ## Configure Claude Desktop
@@ -24,12 +24,13 @@ Run:
 sp-local-bridge-print-config claude-desktop
 ```
 
-Output:
+The output will contain an **absolute path** to the MCP server command, which works even if Claude Desktop does not inherit your shell PATH:
+
 ```json
 {
   "mcpServers": {
     "super-productivity": {
-      "command": "sp-local-bridge-mcp",
+      "command": "/home/you/.local/bin/sp-local-bridge-mcp",
       "args": []
     }
   }
@@ -45,6 +46,11 @@ Add the above to your Claude Desktop config file:
 | Windows | `%APPDATA%\Claude\claude_desktop_config.json`           |
 
 Then restart Claude Desktop.
+
+If you prefer a bare command name (only works if `~/.local/bin` is on Claude Desktop's PATH):
+```sh
+sp-local-bridge-print-config --bare claude-desktop
+```
 
 ## Verify
 
@@ -69,5 +75,5 @@ All checks passed.
 ## Troubleshooting
 
 - **SP unreachable**: Ensure Super Productivity is running and Local REST API is enabled in Settings → Misc.
-- **sp-local-bridge-mcp not found**: Ensure `~/.local/bin` is on your PATH, or reinstall with `scripts/install.sh`.
 - **Claude Desktop doesn't show tools**: Restart Claude Desktop after editing the config file.
+- **MCP command path wrong**: Re-run `sp-local-bridge-print-config claude-desktop` — it resolves the absolute path to the installed binary. If you moved or reinstalled, re-generate the config.
