@@ -35,9 +35,6 @@ AGENTS.md                      Canonical agent instructions
 CLAUDE.md                      Pointer to AGENTS.md
 README.md                      Project overview and dev commands
 docs/hosts/claude-desktop.md   Claude Desktop host config
-plugin/manifest.json           Reframed SP plugin manifest
-plugin/plugin.js               Upstream plugin (fallback reference)
-plugin/index.html              Upstream dashboard (fallback reference)
 src/sp_local_bridge/           Python package structure
 tests/test_smoke.py            Import smoke tests
 tests/test_cli.py              CLI invocation test
@@ -90,7 +87,7 @@ $ uv run pyright
 0 errors, 0 warnings, 0 informations
 
 $ uv run pytest
-6 passed in 0.03s
+8 passed in 0.06s
 
 $ uv run pre-commit run --all-files
 trim trailing whitespace .................... Passed
