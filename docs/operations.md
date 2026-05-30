@@ -170,3 +170,14 @@ These operations are not available via the Local REST API and are candidates for
 - `tag.create`
 - `notification.show`
 - Recurring task creation / repeat config
+
+## MCP Error Semantics
+
+| Condition | MCP behavior |
+|-----------|-------------|
+| SP returns an error | `CallToolResult(isError=True)` with error code and message |
+| SP unreachable / timeout | `CallToolResult(isError=True)` with `SP_UNAVAILABLE` or `TIMEOUT` |
+| Payload validation failure | `CallToolResult(isError=True)` with `INVALID_INPUT` |
+| Unknown tool name | `CallToolResult(isError=True)` with "Unknown tool: ..." message |
+
+**Note on unknown tools:** The MCP Python SDK catches `McpError` raised inside `call_tool` handlers and converts it to a tool error result (`isError=True`), not a JSON-RPC protocol error (`-32602`). This is an SDK design choice. The bridge raises `McpError(INVALID_PARAMS)` which the SDK wraps accordingly.

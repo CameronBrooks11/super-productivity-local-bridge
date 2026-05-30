@@ -3,6 +3,9 @@
 Tests the actual MCP protocol flow using the SDK's in-memory transport:
 initialize → list_tools → call_tool → response. The server is wired to
 a real BridgeService backed by mocked HTTP (respx).
+
+Note: These use the SDK's in-memory client/server streams, not the stdio
+console script. The protocol semantics are identical; only the transport differs.
 """
 
 import json
@@ -158,16 +161,23 @@ class TestMCPProtocol:
     @respx.mock
     @pytest.mark.asyncio
     async def test_call_tool_unknown_tool_returns_error(self):
-        """Unknown tool name should result in an MCP error (McpError/protocol error)."""
+        """Unknown tool name returns isError=True.
+
+        Note: The MCP SDK catches McpError in call_tool handlers and converts
+        it to CallToolResult(isError=True) rather than a JSON-RPC protocol error.
+        This is an SDK design choice, not a bridge defect.
+        """
         service = BridgeService(SPRestClient(base_url=BASE_URL))
         server = create_server(service)
 
         async with create_connected_server_and_client_session(server) as session:
             await session.initialize()
-            # McpError with INVALID_PARAMS should result in an error response
             result = await session.call_tool("nonexistent_tool", {})
-            # The SDK returns isError=True for McpError raised in handlers
             assert result.isError is True
+            # Verify the error message is informative
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            assert "Unknown tool" in item.text
 
     @respx.mock
     @pytest.mark.asyncio
