@@ -28,7 +28,48 @@ class TestResponseTranslation:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_error_envelope(self, client: SPRestClient):
+    async def test_structured_error_envelope(self, client: SPRestClient):
+        """Real SP returns error as { code, message } object."""
+        respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(
+                503,
+                json={"ok": False, "error": {"code": "APP_NOT_READY", "message": "Renderer is not ready yet"}},
+            )
+        )
+        result = await client.list_tasks()
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == "APP_NOT_READY"
+        assert "not ready" in result.error.message
+        assert result.error.details["status_code"] == 503
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_structured_error_with_details(self, client: SPRestClient):
+        """SP error envelope may include a details field."""
+        respx.post(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(
+                400,
+                json={
+                    "ok": False,
+                    "error": {
+                        "code": "INVALID_REQUEST_BODY",
+                        "message": "Invalid request body",
+                        "details": {"field": "title"},
+                    },
+                },
+            )
+        )
+        result = await client.create_task({})
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == "INVALID_REQUEST_BODY"
+        assert result.error.details["sp_details"] == {"field": "title"}
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_legacy_string_error_envelope(self, client: SPRestClient):
+        """Fallback: some error paths may still return error as plain string."""
         respx.get(f"{BASE_URL}/tasks").mock(
             return_value=httpx.Response(500, json={"ok": False, "error": "Internal failure"})
         )

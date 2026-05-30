@@ -131,6 +131,23 @@ class TestOperationMapping:
         assert "health" in result.data
         assert "status" in result.data
 
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_bridge_health_degraded(self, service: BridgeService):
+        """If /health passes but /status fails, report degraded (not success)."""
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"server": "up"}})
+        )
+        respx.get(f"{BASE_URL}/status").mock(
+            return_value=httpx.Response(
+                503, json={"ok": False, "error": {"code": "APP_NOT_READY", "message": "Not ready"}}
+            )
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.BRIDGE_HEALTH))
+        assert result.ok is False
+        assert result.error is not None
+        assert "degraded" in result.error.message.lower() or "status" in result.error.message.lower()
+
 
 class TestValidation:
     @pytest.mark.asyncio
@@ -161,6 +178,54 @@ class TestValidation:
     @pytest.mark.asyncio
     async def test_task_complete_missing_id(self, service: BridgeService):
         result = await service.execute(BridgeRequest(operation=Operation.TASK_COMPLETE, payload={}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_empty_title(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "  "}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_non_string_title(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": 123}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_unknown_fields_rejected(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "badField": "nope"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "badField" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_invalid_tag_ids_type(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "tagIds": "not-a-list"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_update_no_fields(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_UPDATE, payload={"id": "t1"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "No fields" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_get_non_string_id(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_GET, payload={"id": 123}))
         assert result.ok is False
         assert result.error is not None
         assert result.error.code == errors.INVALID_INPUT
