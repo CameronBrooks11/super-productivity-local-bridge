@@ -13,6 +13,7 @@ MANIFEST
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+docs/.vitepress/.temp/
 
 # Virtual environments
 .venv/
@@ -59,3 +60,7 @@ refs/
 
 # Plugin (not shipped until fallback implementation exists)
 plugin/
+
+# VitePress (docs site)
+.vitepress
+.temp

@@ -10,12 +10,12 @@ Control [Super Productivity](https://super-productivity.com/) tasks, projects, a
 
 Super Productivity is a great task manager. This bridge lets AI coding agents and automation scripts interact with it programmatically — creating tasks, tracking work, and managing projects without leaving your workflow.
 
-Everything runs locally on `127.0.0.1:3876`. No cloud. No accounts. No data leaves your machine.
+The bridge talks only to your local Super Productivity API on `127.0.0.1:3876`. Your MCP host may have its own data handling, so review the host's privacy model before granting task access.
 
 ## Features
 
 - **13 operations** — list/get/create/update/complete/start/stop/archive/restore tasks, list projects, list tags, health check
-- **MCP adapter** — works with VS Code Copilot, Claude Desktop, Codex CLI, and any MCP-compatible host
+- **MCP adapter** — live-validated with VS Code Copilot; includes setup guides and config generation for Claude Desktop and Codex CLI
 - **CLI** — direct command-line access to all operations
 - **Host config generator** — prints ready-to-paste config with absolute paths for each supported host
 - **Doctor command** — diagnoses connectivity and configuration issues
