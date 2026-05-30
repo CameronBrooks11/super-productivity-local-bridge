@@ -42,11 +42,11 @@ class TestResponseTranslation:
     @respx.mock
     @pytest.mark.asyncio
     async def test_structured_error_with_details(self, client: SPRestClient):
-        """SP error envelope may include a details field."""
+        """SP error envelope may include a details field (synthetic — shape not yet confirmed live)."""
         respx.post(f"{BASE_URL}/tasks").mock(
             return_value=httpx.Response(
                 400,
-                json=load_fixture("task-create-error.json"),
+                json=load_fixture("task-create-error-with-details.json"),
             )
         )
         result = await client.create_task({})

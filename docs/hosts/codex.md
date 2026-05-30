@@ -45,7 +45,7 @@ sp-local-bridge-print-config --bare codex
 
 ## Using Codex in VS Code
 
-When running Codex as a VS Code extension, it shares the `.vscode/mcp.json` configuration with other VS Code agents. See [vscode-copilot.md](vscode-copilot.md) — no separate config is needed.
+When running Codex as a VS Code extension, it uses the same `~/.codex/config.toml` configuration as the CLI. This is separate from VS Code Copilot's `.vscode/mcp.json`. No additional config is needed if you already configured Codex above.
 
 ## Verify
 

@@ -2,7 +2,6 @@
   "ok": false,
   "error": {
     "code": "INVALID_REQUEST_BODY",
-    "message": "Validation failed: title is required",
-    "details": {"field": "title"}
+    "message": "Validation failed: title is required"
   }
 }

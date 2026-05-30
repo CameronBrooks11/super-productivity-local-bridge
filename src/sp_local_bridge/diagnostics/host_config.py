@@ -119,16 +119,20 @@ def _build_config(host: str, *, absolute: bool = True) -> dict:
 
 
 def _format_toml_config(config: dict) -> str:
-    """Format a config dict as TOML for Codex-style hosts."""
+    """Format a config dict as TOML for Codex-style hosts.
+
+    Uses TOML literal strings (single quotes) for values to avoid
+    backslash escape issues with Windows paths like C:\\Users\\...
+    """
     lines: list[str] = []
     mcp_servers = config.get("mcp_servers", {})
     for name, server in mcp_servers.items():
         lines.append(f"[mcp_servers.{name}]")
         for key, value in server.items():
             if isinstance(value, str):
-                lines.append(f'{key} = "{value}"')
+                lines.append(f"{key} = '{value}'")
             elif isinstance(value, list):
-                items = ", ".join(f'"{v}"' for v in value)
+                items = ", ".join(f"'{v}'" for v in value)
                 lines.append(f"args = [{items}]")
             elif isinstance(value, bool):
                 lines.append(f"{key} = {'true' if value else 'false'}")

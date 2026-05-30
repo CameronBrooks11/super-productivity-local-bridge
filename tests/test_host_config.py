@@ -3,10 +3,17 @@
 import json
 import subprocess
 import sys
+import tomllib
 
 import pytest
 
-from sp_local_bridge.diagnostics.host_config import _HOSTS, _build_config, _print_config, _resolve_mcp_command
+from sp_local_bridge.diagnostics.host_config import (
+    _HOSTS,
+    _build_config,
+    _format_toml_config,
+    _print_config,
+    _resolve_mcp_command,
+)
 
 
 class TestResolveMcpCommand:
@@ -90,8 +97,22 @@ class TestPrintConfig:
         exit_code = _print_config("codex", absolute=False)
         assert exit_code == 0
         output = capsys.readouterr().out
-        assert "[mcp_servers.superProductivity]" in output
-        assert 'command = "sp-local-bridge-mcp"' in output
+        # Parse the TOML section (everything before the blank-line separator)
+        toml_str = output.split("\n\n")[0]
+        parsed = tomllib.loads(toml_str)
+        assert "mcp_servers" in parsed
+        assert "superProductivity" in parsed["mcp_servers"]
+        assert parsed["mcp_servers"]["superProductivity"]["command"] == "sp-local-bridge-mcp"
+
+    def test_vscode_copilot_outputs_valid_json(self, capsys: pytest.CaptureFixture[str]):
+        exit_code = _print_config("vscode-copilot", absolute=False)
+        assert exit_code == 0
+        output = capsys.readouterr().out
+        json_str = output.split("\n\n")[0]
+        config = json.loads(json_str)
+        assert "servers" in config
+        assert config["servers"]["superProductivity"]["type"] == "stdio"
+        assert config["servers"]["superProductivity"]["command"] == "sp-local-bridge-mcp"
 
     def test_all_hosts_have_required_keys(self):
         for host, entry in _HOSTS.items():
@@ -102,6 +123,32 @@ class TestPrintConfig:
             assert "linux" in paths, f"{host} missing linux path"
             assert "macos" in paths, f"{host} missing macos path"
             assert "windows" in paths, f"{host} missing windows path"
+
+
+class TestTomlEscaping:
+    def test_windows_path_produces_valid_toml(self):
+        """Windows paths with backslashes must not break TOML parsing."""
+        config = {
+            "mcp_servers": {"superProductivity": {"command": r"C:\Users\Me\bin\sp-local-bridge-mcp.exe", "args": []}}
+        }
+        toml_str = _format_toml_config(config)
+        parsed = tomllib.loads(toml_str)
+        assert parsed["mcp_servers"]["superProductivity"]["command"] == r"C:\Users\Me\bin\sp-local-bridge-mcp.exe"
+
+    def test_unix_path_produces_valid_toml(self):
+        config = {
+            "mcp_servers": {"superProductivity": {"command": "/home/user/.local/bin/sp-local-bridge-mcp", "args": []}}
+        }
+        toml_str = _format_toml_config(config)
+        parsed = tomllib.loads(toml_str)
+        assert parsed["mcp_servers"]["superProductivity"]["command"] == "/home/user/.local/bin/sp-local-bridge-mcp"
+
+    def test_path_with_spaces_produces_valid_toml(self):
+        config = {"mcp_servers": {"test": {"command": "/opt/my tools/bin/sp-local-bridge-mcp", "args": ["--flag"]}}}
+        toml_str = _format_toml_config(config)
+        parsed = tomllib.loads(toml_str)
+        assert parsed["mcp_servers"]["test"]["command"] == "/opt/my tools/bin/sp-local-bridge-mcp"
+        assert parsed["mcp_servers"]["test"]["args"] == ["--flag"]
 
 
 class TestPrintConfigCLI:
