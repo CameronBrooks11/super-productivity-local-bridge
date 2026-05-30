@@ -9,7 +9,7 @@ from typing import Any
 
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import CallToolResult, TextContent, Tool
 
 from sp_local_bridge.core.models import BridgeRequest, BridgeResult
 from sp_local_bridge.core.operations import Operation
@@ -147,14 +147,21 @@ _TOOLS: list[Tool] = [
 ]
 
 
-def _result_to_content(result: BridgeResult) -> list[TextContent]:
-    """Convert a BridgeResult to MCP text content."""
+def _result_to_call_result(result: BridgeResult) -> CallToolResult:
+    """Convert a BridgeResult to an MCP CallToolResult with proper isError semantics."""
     if result.ok:
         text = json.dumps(result.data, indent=2, default=str)
+        return CallToolResult(content=[TextContent(type="text", text=text)], isError=False)
     else:
         assert result.error is not None
-        text = json.dumps({"error": result.error.code, "message": result.error.message}, indent=2)
-    return [TextContent(type="text", text=text)]
+        error_payload: dict[str, Any] = {
+            "error": result.error.code,
+            "message": result.error.message,
+        }
+        if result.error.details:
+            error_payload["details"] = result.error.details
+        text = json.dumps(error_payload, indent=2)
+        return CallToolResult(content=[TextContent(type="text", text=text)], isError=True)
 
 
 async def _serve() -> None:
@@ -167,16 +174,16 @@ async def _serve() -> None:
         return _TOOLS
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any] | None) -> list[TextContent]:
+    async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
         operation = _TOOL_MAP.get(name)
         if operation is None:
-            err = json.dumps({"error": "UNKNOWN_TOOL", "message": f"Unknown tool: {name}"})
-            return [TextContent(type="text", text=err)]
+            # Unknown tool is a protocol-level error — raise so MCP SDK returns isError=True
+            raise ValueError(f"Unknown tool: {name}")
 
         payload = arguments or {}
         request = BridgeRequest(operation=operation, payload=payload)
         result = await service.execute(request)
-        return _result_to_content(result)
+        return _result_to_call_result(result)
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())
