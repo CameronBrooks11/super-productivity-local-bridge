@@ -52,6 +52,5 @@ working/
 # Reference repos (cloned for development reference)
 refs/
 
-# Legacy agent config dirs (empty, will be removed)
-.agents/
-.codex/
+# Plugin (not shipped until fallback implementation exists)
+plugin/

@@ -25,7 +25,6 @@ src/sp_local_bridge/       Python package (src layout)
   adapters/                Host adapters (MCP server)
   diagnostics/             Doctor, health checks
   cli.py                   CLI entry point
-plugin/                    Optional SP plugin (JS, fallback only)
 tests/                     Pytest tests
 docs/                      Documentation
 ```
