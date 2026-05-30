@@ -71,7 +71,7 @@ uv run pre-commit run --all-files  # Run manually
 
 ## Project Status
 
-**0.1.0.dev0** — core operations, REST client, and CLI functional. MCP adapter wired. Requires SP desktop app with Local REST API enabled.
+**0.1.0** — core operations, REST client, CLI, MCP adapter, doctor, and host config generator functional. Requires SP desktop app with Local REST API enabled.
 
 ## License
 

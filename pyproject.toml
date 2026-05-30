@@ -1,6 +1,6 @@
 [project]
 name = "sp-local-bridge"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Local automation bridge for Super Productivity — REST-first with MCP adapter"
 readme = "README.md"
 license = "MIT"
@@ -28,6 +28,7 @@ dependencies = [
 sp-local-bridge = "sp_local_bridge.cli:main"
 sp-local-bridge-mcp = "sp_local_bridge.adapters.mcp_server:main"
 sp-local-bridge-doctor = "sp_local_bridge.diagnostics.doctor:main"
+sp-local-bridge-print-config = "sp_local_bridge.diagnostics.host_config:main"
 
 [project.urls]
 Repository = "https://github.com/CameronBrooks11/super-productivity-local-bridge"

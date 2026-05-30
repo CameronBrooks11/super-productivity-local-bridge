@@ -1,4 +1,4 @@
-.PHONY: install format lint typecheck test cov check clean
+.PHONY: install format lint typecheck test cov check clean build doctor print-config checksums
 
 ## Install dependencies
 install:
@@ -31,6 +31,22 @@ check: install
 	uv run pyright
 	uv run pytest
 	uv build --quiet
+
+## Build release artifacts
+build:
+	uv build
+
+## Generate checksums for release artifacts
+checksums:
+	cd dist && sha256sum * > checksums.txt
+
+## Run bridge doctor
+doctor:
+	uv run sp-local-bridge-doctor
+
+## Print host config
+print-config:
+	uv run sp-local-bridge-print-config claude-desktop
 
 ## Remove build artifacts
 clean:
