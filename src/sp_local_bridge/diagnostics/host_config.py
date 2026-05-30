@@ -9,6 +9,7 @@ import sys
 
 _HOSTS: dict[str, dict[str, object]] = {
     "claude-desktop": {
+        "format": "json",
         "config_template": {
             "mcpServers": {
                 "super-productivity": {
@@ -24,6 +25,7 @@ _HOSTS: dict[str, dict[str, object]] = {
         },
     },
     "vscode-copilot": {
+        "format": "json",
         "config_template": {
             "servers": {
                 "superProductivity": {
@@ -37,6 +39,22 @@ _HOSTS: dict[str, dict[str, object]] = {
             "linux": ".vscode/mcp.json (workspace) or User settings.json",
             "macos": ".vscode/mcp.json (workspace) or User settings.json",
             "windows": ".vscode/mcp.json (workspace) or User settings.json",
+        },
+    },
+    "codex": {
+        "format": "toml",
+        "config_template": {
+            "mcp_servers": {
+                "superProductivity": {
+                    "command": "sp-local-bridge-mcp",
+                    "args": [],
+                }
+            }
+        },
+        "paths": {
+            "linux": "~/.codex/config.toml or .codex/config.toml (project)",
+            "macos": "~/.codex/config.toml or .codex/config.toml (project)",
+            "windows": "~/.codex/config.toml or .codex/config.toml (project)",
         },
     },
 }
@@ -91,13 +109,31 @@ def _build_config(host: str, *, absolute: bool = True) -> dict:
 
     if absolute:
         mcp_cmd = _resolve_mcp_command()
-        # Replace the command in all server entries (mcpServers or servers)
-        servers = config.get("mcpServers", config.get("servers", {}))
+        # Replace the command in all server entries (mcpServers, servers, or mcp_servers)
+        servers = config.get("mcpServers", config.get("servers", config.get("mcp_servers", {})))
         for _name, server in servers.items():
             if server.get("command") == "sp-local-bridge-mcp":
                 server["command"] = mcp_cmd
 
     return config
+
+
+def _format_toml_config(config: dict) -> str:
+    """Format a config dict as TOML for Codex-style hosts."""
+    lines: list[str] = []
+    mcp_servers = config.get("mcp_servers", {})
+    for name, server in mcp_servers.items():
+        lines.append(f"[mcp_servers.{name}]")
+        for key, value in server.items():
+            if isinstance(value, str):
+                lines.append(f'{key} = "{value}"')
+            elif isinstance(value, list):
+                items = ", ".join(f'"{v}"' for v in value)
+                lines.append(f"args = [{items}]")
+            elif isinstance(value, bool):
+                lines.append(f"{key} = {'true' if value else 'false'}")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def _print_config(host: str, *, absolute: bool = True) -> int:
@@ -111,16 +147,20 @@ def _print_config(host: str, *, absolute: bool = True) -> int:
     config = _build_config(host, absolute=absolute)
     paths = entry["paths"]
     assert isinstance(paths, dict)
+    fmt = entry.get("format", "json")
 
     # Find the command from whichever server structure this host uses
-    servers = config.get("mcpServers", config.get("servers", {}))
+    servers = config.get("mcpServers", config.get("servers", config.get("mcp_servers", {})))
     mcp_cmd = next(iter(servers.values()), {}).get("command", "sp-local-bridge-mcp")
     if mcp_cmd == "sp-local-bridge-mcp" and absolute:
         print("Warning: could not resolve absolute path for sp-local-bridge-mcp.", file=sys.stderr)
         print("The host may fail to launch if ~/.local/bin is not on its PATH.", file=sys.stderr)
         print("", file=sys.stderr)
 
-    print(json.dumps(config, indent=2))
+    if fmt == "toml":
+        print(_format_toml_config(config))
+    else:
+        print(json.dumps(config, indent=2))
     print()
     print("Add the above to your config file:")
     print(f"  Linux:   {paths['linux']}")

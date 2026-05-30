@@ -46,6 +46,16 @@ class TestBuildConfig:
         cmd = config["servers"]["superProductivity"]["command"]
         assert "sp-local-bridge-mcp" in cmd
 
+    def test_codex_bare_mode(self):
+        config = _build_config("codex", absolute=False)
+        cmd = config["mcp_servers"]["superProductivity"]["command"]
+        assert cmd == "sp-local-bridge-mcp"
+
+    def test_codex_absolute_mode(self):
+        config = _build_config("codex", absolute=True)
+        cmd = config["mcp_servers"]["superProductivity"]["command"]
+        assert "sp-local-bridge-mcp" in cmd
+
 
 class TestPrintConfig:
     def test_claude_desktop_returns_valid_json(self, capsys: pytest.CaptureFixture[str]):
@@ -75,6 +85,13 @@ class TestPrintConfig:
         assert exit_code == 2
         err = capsys.readouterr().err
         assert "unknown host" in err.lower()
+
+    def test_codex_outputs_toml(self, capsys: pytest.CaptureFixture[str]):
+        exit_code = _print_config("codex", absolute=False)
+        assert exit_code == 0
+        output = capsys.readouterr().out
+        assert "[mcp_servers.superProductivity]" in output
+        assert 'command = "sp-local-bridge-mcp"' in output
 
     def test_all_hosts_have_required_keys(self):
         for host, entry in _HOSTS.items():
