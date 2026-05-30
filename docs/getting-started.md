@@ -10,6 +10,16 @@ Install the bridge, configure your MCP host, and verify everything works.
 
 ## Install
 
+### From latest release (recommended)
+
+```sh
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/latest/download/sp_local_bridge-0.1.0-py3-none-any.whl
+```
+
+This installs the pre-built package directly. Checksums are available on the [Releases](https://github.com/CameronBrooks11/super-productivity-local-bridge/releases) page.
+
+### From source
+
 ```sh
 git clone https://github.com/CameronBrooks11/super-productivity-local-bridge.git
 cd super-productivity-local-bridge

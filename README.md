@@ -22,13 +22,23 @@ The bridge talks only to your local Super Productivity API on `127.0.0.1:3876`. 
 
 ## Install
 
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/).
+
+**From latest release:**
+
+```sh
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/latest/download/sp_local_bridge-0.1.0-py3-none-any.whl
+```
+
+**From source:**
+
 ```sh
 git clone https://github.com/CameronBrooks11/super-productivity-local-bridge.git
 cd super-productivity-local-bridge
 scripts/install.sh
 ```
 
-Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Use `--dry-run` to preview.
+Use `--dry-run` to preview.
 
 ## Configure an MCP Host
 
