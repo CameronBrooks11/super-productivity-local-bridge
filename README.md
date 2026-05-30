@@ -40,15 +40,20 @@ The install script will:
 
 Use `scripts/install.sh --dry-run` to preview without making changes.
 
-### Configure MCP Host (Claude Desktop)
+### Configure MCP Host
 
 ```sh
-sp-local-bridge-print-config claude-desktop
+sp-local-bridge-print-config vscode-copilot   # VS Code Copilot / Codex in VS Code
+sp-local-bridge-print-config claude-desktop    # Claude Desktop
+sp-local-bridge-print-config codex             # Codex CLI (standalone)
 ```
 
-This prints a JSON snippet with the **absolute path** to the MCP server command. Add it to your Claude Desktop config file (path shown in output), then restart Claude Desktop.
+This prints a config snippet with the **absolute path** to the MCP server command. Add it to the appropriate config file (path shown in output), then restart the host.
 
-See [docs/hosts/claude-desktop.md](docs/hosts/claude-desktop.md) for full instructions.
+Host guides:
+- [VS Code Copilot](docs/hosts/vscode-copilot.md)
+- [Claude Desktop](docs/hosts/claude-desktop.md)
+- [Codex CLI](docs/hosts/codex.md)
 
 ### Verify
 
