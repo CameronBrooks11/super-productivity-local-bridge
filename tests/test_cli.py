@@ -56,13 +56,23 @@ def test_cli_tasks_get_missing_id():
 
 
 def test_cli_health_when_sp_unavailable():
-    """health command should fail gracefully when SP is not running."""
+    """health command should fail gracefully when SP is not running.
+
+    Uses an environment variable to point the client at a port with nothing listening,
+    ensuring the test is deterministic regardless of whether SP is running on the dev machine.
+    """
+    import os
+
+    env = os.environ.copy()
+    env["SP_BASE_URL"] = "http://127.0.0.1:1"
+
     result = subprocess.run(
         [sys.executable, "-m", "sp_local_bridge", "health"],
         capture_output=True,
         text=True,
+        env=env,
+        timeout=10,
     )
-    # SP is not running in CI/test, so we expect a clean error (not a traceback)
     assert result.returncode == 1
     assert "SP_UNAVAILABLE" in result.stderr
     # No traceback

@@ -230,6 +230,39 @@ class TestValidation:
         assert result.error is not None
         assert result.error.code == errors.INVALID_INPUT
 
+    @pytest.mark.asyncio
+    async def test_task_create_tag_ids_with_non_string_items(self, service: BridgeService):
+        """tagIds=[123] should be rejected (items must be strings)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "tagIds": [123]})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "tagIds" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_project_id_non_string(self, service: BridgeService):
+        """projectId=123 should be rejected (must be string or null)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "projectId": 123})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "projectId" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_rejects_id_field(self, service: BridgeService):
+        """task.create should reject payloads containing 'id'."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "id": "custom-id"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "id" in result.error.message.lower()
+
 
 class TestErrorPropagation:
     @respx.mock

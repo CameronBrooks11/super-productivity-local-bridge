@@ -9,7 +9,7 @@ from typing import Any
 
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import CallToolResult, TextContent, Tool
+from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations
 
 from sp_local_bridge.core.models import BridgeRequest, BridgeResult
 from sp_local_bridge.core.operations import Operation
@@ -33,17 +33,26 @@ _TOOL_MAP: dict[str, Operation] = {
     "list_tags": Operation.TAG_LIST,
 }
 
-# Tool definitions with input schemas
+# Annotation presets
+_READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False)
+_MUTATING = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False)
+_IDEMPOTENT_MUTATING = ToolAnnotations(
+    readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+)
+
+# Tool definitions with input schemas and annotations
 _TOOLS: list[Tool] = [
     Tool(
         name="health",
         description="Check connectivity to the Super Productivity desktop app.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
     ),
     Tool(
         name="list_tasks",
         description="List all tasks.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
     ),
     Tool(
         name="get_task",
@@ -53,6 +62,7 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_READ_ONLY,
     ),
     Tool(
         name="create_task",
@@ -61,13 +71,14 @@ _TOOLS: list[Tool] = [
             "type": "object",
             "properties": {
                 "title": {"type": "string", "description": "Task title."},
-                "projectId": {"type": "string", "description": "Project ID to assign."},
+                "projectId": {"type": ["string", "null"], "description": "Project ID to assign."},
                 "tagIds": {"type": "array", "items": {"type": "string"}, "description": "Tag IDs to assign."},
                 "notes": {"type": "string", "description": "Task notes."},
-                "parentId": {"type": "string", "description": "Parent task ID for subtasks."},
+                "parentId": {"type": ["string", "null"], "description": "Parent task ID for subtasks."},
             },
             "required": ["title"],
         },
+        annotations=_MUTATING,
     ),
     Tool(
         name="update_task",
@@ -78,11 +89,12 @@ _TOOLS: list[Tool] = [
                 "id": {"type": "string", "description": "Task ID."},
                 "title": {"type": "string", "description": "New title."},
                 "notes": {"type": "string", "description": "New notes."},
-                "projectId": {"type": "string", "description": "New project ID."},
+                "projectId": {"type": ["string", "null"], "description": "New project ID."},
                 "tagIds": {"type": "array", "items": {"type": "string"}, "description": "New tag IDs."},
             },
             "required": ["id"],
         },
+        annotations=_MUTATING,
     ),
     Tool(
         name="complete_task",
@@ -92,6 +104,7 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_IDEMPOTENT_MUTATING,
     ),
     Tool(
         name="uncomplete_task",
@@ -101,6 +114,7 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_IDEMPOTENT_MUTATING,
     ),
     Tool(
         name="start_task",
@@ -110,11 +124,13 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_MUTATING,
     ),
     Tool(
         name="stop_current_task",
         description="Stop the currently tracked task.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_MUTATING,
     ),
     Tool(
         name="archive_task",
@@ -124,6 +140,7 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_MUTATING,
     ),
     Tool(
         name="restore_task",
@@ -133,16 +150,19 @@ _TOOLS: list[Tool] = [
             "properties": {"id": {"type": "string", "description": "Task ID."}},
             "required": ["id"],
         },
+        annotations=_MUTATING,
     ),
     Tool(
         name="list_projects",
         description="List all projects.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
     ),
     Tool(
         name="list_tags",
         description="List all tags.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
     ),
 ]
 
@@ -150,8 +170,35 @@ _TOOLS: list[Tool] = [
 def _result_to_call_result(result: BridgeResult) -> CallToolResult:
     """Convert a BridgeResult to an MCP CallToolResult with proper isError semantics."""
     if result.ok:
+        # Return structured data as JSON text content
         text = json.dumps(result.data, indent=2, default=str)
         return CallToolResult(content=[TextContent(type="text", text=text)], isError=False)
+    else:
+        assert result.error is not None
+        error_payload: dict[str, Any] = {
+            "error": result.error.code,
+            "message": result.error.message,
+        }
+        if result.error.details:
+            error_payload["details"] = result.error.details
+        text = json.dumps(error_payload, indent=2)
+        return CallToolResult(content=[TextContent(type="text", text=text)], isError=True)
+
+
+def _result_to_structured(result: BridgeResult) -> dict[str, Any] | CallToolResult:
+    """Convert a BridgeResult to structured content (dict) or CallToolResult for errors.
+
+    The MCP SDK handles dict returns by placing them in structuredContent and
+    generating a JSON text fallback in content automatically.
+    For errors, we return a CallToolResult with isError=True since structured
+    content doesn't support error signaling.
+    """
+    if result.ok:
+        # Return dict — SDK puts it in structuredContent + generates text fallback
+        if isinstance(result.data, dict):
+            return result.data
+        # For non-dict data (lists, None), wrap in a dict
+        return {"result": result.data}
     else:
         assert result.error is not None
         error_payload: dict[str, Any] = {
@@ -174,7 +221,7 @@ async def _serve() -> None:
         return _TOOLS
 
     @server.call_tool()
-    async def call_tool(name: str, arguments: dict[str, Any] | None) -> CallToolResult:
+    async def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any] | CallToolResult:
         operation = _TOOL_MAP.get(name)
         if operation is None:
             # Unknown tool is a protocol-level error — raise so MCP SDK returns isError=True
@@ -183,7 +230,7 @@ async def _serve() -> None:
         payload = arguments or {}
         request = BridgeRequest(operation=operation, payload=payload)
         result = await service.execute(request)
-        return _result_to_call_result(result)
+        return _result_to_structured(result)
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())

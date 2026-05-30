@@ -9,20 +9,21 @@ from sp_local_bridge.core.models import BridgeRequest, BridgeResult
 from sp_local_bridge.core.operations import Operation
 from sp_local_bridge.sp_rest.client import SPRestClient
 
-# Fields that the SP REST API recognizes for task creation/update
-_TASK_WRITABLE_FIELDS = frozenset(
-    {
-        "title",
-        "notes",
-        "projectId",
-        "tagIds",
-        "parentId",
-        "plannedAt",
-        "dueDay",
-        "dueWithTime",
-        "isDone",
-    }
-)
+# Fields that the SP REST API recognizes for task creation/update, with their expected types.
+# None means the field accepts null (optional clear).
+_TASK_FIELD_TYPES: dict[str, tuple[type, ...]] = {
+    "title": (str,),
+    "notes": (str,),
+    "projectId": (str, type(None)),
+    "tagIds": (list,),
+    "parentId": (str, type(None)),
+    "plannedAt": (str, int, type(None)),
+    "dueDay": (str, type(None)),
+    "dueWithTime": (str, type(None)),
+    "isDone": (bool,),
+}
+
+_TASK_WRITABLE_FIELDS = frozenset(_TASK_FIELD_TYPES.keys())
 
 
 def _validate_id(payload: dict[str, Any]) -> str | None:
@@ -34,17 +35,32 @@ def _validate_id(payload: dict[str, Any]) -> str | None:
 
 
 def _validate_task_fields(payload: dict[str, Any], *, exclude: frozenset[str] = frozenset()) -> BridgeResult | None:
-    """Validate task payload fields. Returns a failure BridgeResult if invalid, None if ok."""
+    """Validate task payload fields and types. Returns a failure BridgeResult if invalid, None if ok."""
     unknown = set(payload.keys()) - _TASK_WRITABLE_FIELDS - exclude
     if unknown:
         return BridgeResult.failure(
             errors.INVALID_INPUT,
             f"Unknown fields: {', '.join(sorted(unknown))}",
         )
-    # Validate tagIds type if present
+
+    for field, value in payload.items():
+        if field in exclude:
+            continue
+        expected = _TASK_FIELD_TYPES.get(field)
+        if expected is None:
+            continue
+        if not isinstance(value, expected):
+            type_names = " | ".join(t.__name__ for t in expected)
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Field '{field}' must be {type_names}, got {type(value).__name__}",
+            )
+
+    # Validate tagIds items are all strings if present
     tag_ids = payload.get("tagIds")
-    if tag_ids is not None and not isinstance(tag_ids, list):
-        return BridgeResult.failure(errors.INVALID_INPUT, "tagIds must be a list of strings")
+    if isinstance(tag_ids, list) and not all(isinstance(item, str) for item in tag_ids):
+        return BridgeResult.failure(errors.INVALID_INPUT, "tagIds must contain only strings")
+
     return None
 
 
@@ -77,7 +93,9 @@ class BridgeService:
         title = payload.get("title")
         if not isinstance(title, str) or not title.strip():
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: title (non-empty string)")
-        validation_err = _validate_task_fields(payload, exclude=frozenset({"id"}))
+        if "id" in payload:
+            return BridgeResult.failure(errors.INVALID_INPUT, "Field 'id' is not allowed on task.create")
+        validation_err = _validate_task_fields(payload)
         if validation_err:
             return validation_err
         return await self._client.create_task(payload)

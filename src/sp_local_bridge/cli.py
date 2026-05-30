@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 
 from sp_local_bridge import __version__
@@ -41,7 +42,9 @@ def _usage() -> None:
 
 async def _run(args: list[str]) -> int:
     """Parse args and execute the appropriate operation."""
-    service = BridgeService(SPRestClient())
+    base_url = os.environ.get("SP_BASE_URL")
+    client = SPRestClient(base_url=base_url) if base_url else SPRestClient()
+    service = BridgeService(client)
 
     if not args:
         _usage()

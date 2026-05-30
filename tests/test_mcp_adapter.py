@@ -5,9 +5,14 @@ import json
 import httpx
 import pytest
 import respx
-from mcp.types import TextContent
+from mcp.types import CallToolResult, TextContent
 
-from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _TOOLS, _result_to_call_result
+from sp_local_bridge.adapters.mcp_server import (
+    _TOOL_MAP,
+    _TOOLS,
+    _result_to_call_result,
+    _result_to_structured,
+)
 from sp_local_bridge.core.models import BridgeRequest, BridgeResult
 from sp_local_bridge.core.operations import Operation
 from sp_local_bridge.core.service import BridgeService
@@ -126,3 +131,49 @@ class TestToolExecution:
         assert isinstance(item, TextContent)
         content = json.loads(item.text)
         assert content["error"] == "APP_NOT_READY"
+
+
+class TestToolAnnotations:
+    """Every tool should have annotations declared."""
+
+    def test_all_tools_have_annotations(self):
+        for tool in _TOOLS:
+            assert tool.annotations is not None, f"Tool {tool.name} missing annotations"
+
+    def test_read_tools_are_read_only(self):
+        read_tools = {"health", "list_tasks", "get_task", "list_projects", "list_tags"}
+        for tool in _TOOLS:
+            if tool.name in read_tools:
+                assert tool.annotations is not None
+                assert tool.annotations.readOnlyHint is True, f"{tool.name} should be readOnly"
+                assert tool.annotations.destructiveHint is False
+
+    def test_mutating_tools_are_not_read_only(self):
+        mutating_tools = {"create_task", "update_task", "complete_task", "start_task", "stop_current_task"}
+        for tool in _TOOLS:
+            if tool.name in mutating_tools:
+                assert tool.annotations is not None
+                assert tool.annotations.readOnlyHint is False, f"{tool.name} should not be readOnly"
+
+
+class TestStructuredContent:
+    """Test _result_to_structured returns proper types."""
+
+    def test_success_dict_returns_dict(self):
+        result = BridgeResult.success({"id": "t1", "title": "Test"})
+        out = _result_to_structured(result)
+        assert isinstance(out, dict)
+        assert out["id"] == "t1"
+
+    def test_success_list_returns_wrapped_dict(self):
+        result = BridgeResult.success([{"id": "t1"}, {"id": "t2"}])
+        out = _result_to_structured(result)
+        assert isinstance(out, dict)
+        assert "result" in out
+        assert len(out["result"]) == 2
+
+    def test_failure_returns_call_tool_result_with_is_error(self):
+        result = BridgeResult.failure("SP_UNAVAILABLE", "Cannot connect")
+        out = _result_to_structured(result)
+        assert isinstance(out, CallToolResult)
+        assert out.isError is True
