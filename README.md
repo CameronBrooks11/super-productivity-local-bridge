@@ -59,7 +59,7 @@ uv run pre-commit run --all-files  # Run manually
 
 ## Project Status
 
-**v0.1.0-dev** — scaffold and bootstrap complete. Core operations and REST client in progress.
+**0.1.0.dev0** — scaffold and bootstrap complete. Core operations and REST client not yet implemented.
 
 ## License
 

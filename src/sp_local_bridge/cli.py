@@ -10,13 +10,13 @@ def main() -> None:
     args = sys.argv[1:]
 
     if not args or args[0] in ("--help", "-h"):
-        print("sp-local-bridge v0.1.0")
+        print("sp-local-bridge 0.1.0.dev0")
         print("Usage: sp-local-bridge <command>")
         print(f"Commands: {', '.join(COMMANDS)}")
         sys.exit(0)
 
     if args[0] == "--version":
-        print("0.1.0")
+        print("0.1.0.dev0")
         sys.exit(0)
 
     command = args[0]
