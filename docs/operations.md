@@ -1,6 +1,6 @@
-# Core Operations v1
+# Operations Reference
 
-The durable bridge contract. Transport-specific schemas (MCP tool names, CLI subcommands) are adapter details.
+The bridge exposes 13 operations for controlling Super Productivity. These are the stable contract — transport-specific names (MCP tools, CLI subcommands) are adapter details.
 
 ## Call Shape
 
@@ -136,40 +136,67 @@ Same as `task.create` except:
 
 ## Excluded Operations
 
-- `task.delete` — intentionally excluded from v1. Deletion is destructive and deferred until explicit destructive-tool semantics are designed.
+- `task.delete` — intentionally excluded from v1. Deletion is destructive and irreversible in SP.
 
-## Fallback Decision (Phase 3 Gate)
+## Examples
 
-All v0.1 operations are fully supported by the SP Local REST API. **Plugin fallback is deferred.**
+### Create a task
 
-| Operation          | REST supported? | PluginAPI supported? | Needed in v0.1? | Decision       |
-|--------------------|-----------------|----------------------|-----------------|----------------|
-| `task.list`        | yes             | yes                  | yes             | REST (done)    |
-| `task.get`         | yes             | yes                  | yes             | REST (done)    |
-| `task.create`      | yes             | yes                  | yes             | REST (done)    |
-| `task.update`      | yes             | yes                  | yes             | REST (done)    |
-| `task.complete`    | yes             | yes                  | yes             | REST (done)    |
-| `task.uncomplete`  | yes             | yes                  | yes             | REST (done)    |
-| `task.start`       | yes             | yes                  | yes             | REST (done)    |
-| `task.stop_current`| yes             | yes                  | yes             | REST (done)    |
-| `task.archive`     | yes             | yes                  | yes             | REST (done)    |
-| `task.restore`     | yes             | yes                  | yes             | REST (done)    |
-| `project.list`     | yes             | yes                  | yes             | REST (done)    |
-| `tag.list`         | yes             | yes                  | yes             | REST (done)    |
-| `bridge.health`    | yes             | n/a                  | yes             | REST (done)    |
-| `project.create`   | no              | yes                  | no              | defer to v0.2  |
-| `tag.create`       | no              | yes                  | no              | defer to v0.2  |
-| `notification.show`| no              | yes                  | no              | defer to v0.2  |
-| `task.delete`      | no              | yes                  | no              | defer (destructive) |
+```json
+{
+  "operation": "task.create",
+  "payload": {
+    "title": "Write integration tests",
+    "projectId": "project-1",
+    "tagIds": ["tag-dev"],
+    "notes": "Cover REST client edge cases"
+  }
+}
+```
 
-## Known REST Gaps
+### Update a task
 
-These operations are not available via the Local REST API and are candidates for a future PluginAPI fallback:
+```json
+{
+  "operation": "task.update",
+  "payload": {
+    "id": "task-abc123",
+    "title": "Write integration tests (updated)",
+    "isDone": true
+  }
+}
+```
+
+### Complete a task
+
+```json
+{
+  "operation": "task.complete",
+  "payload": { "id": "task-abc123" }
+}
+```
+
+### Archive a task
+
+```json
+{
+  "operation": "task.archive",
+  "payload": { "id": "task-abc123" }
+}
+```
+
+## Known REST API Gaps
+
+These operations are not available via the SP Local REST API and are candidates for future versions:
 
 - `project.create`
 - `tag.create`
 - `notification.show`
 - Recurring task creation / repeat config
+
+## API Contract Fixtures
+
+Canonical SP REST API response shapes are maintained in [`tests/fixtures/`](https://github.com/CameronBrooks11/super-productivity-local-bridge/tree/main/tests/fixtures). Files without qualifiers (e.g. `task-list-ok.json`) represent observed API responses. Files with qualifiers (e.g. `task-create-error-with-details.json`) are synthetic edge cases.
 
 ## MCP Error Semantics
 
@@ -179,5 +206,3 @@ These operations are not available via the Local REST API and are candidates for
 | SP unreachable / timeout | `CallToolResult(isError=True)` with `SP_UNAVAILABLE` or `TIMEOUT` |
 | Payload validation failure | `CallToolResult(isError=True)` with `INVALID_INPUT` |
 | Unknown tool name | `CallToolResult(isError=True)` with "Unknown tool: ..." message |
-
-**Note on unknown tools:** The MCP Python SDK catches `McpError` raised inside `call_tool` handlers and converts it to a tool error result (`isError=True`), not a JSON-RPC protocol error (`-32602`). This is an SDK design choice. The bridge raises `McpError(INVALID_PARAMS)` which the SDK wraps accordingly.
