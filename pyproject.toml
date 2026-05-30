@@ -44,7 +44,9 @@ dev = [
     "pre-commit>=4",
     "pyright>=1.1",
     "pytest>=8",
+    "pytest-asyncio>=1.4.0",
     "pytest-cov>=6",
+    "respx>=0.23.1",
     "ruff>=0.11",
 ]
 
@@ -70,6 +72,7 @@ include = ["src", "tests"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--strict-markers -q"
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["sp_local_bridge"]
