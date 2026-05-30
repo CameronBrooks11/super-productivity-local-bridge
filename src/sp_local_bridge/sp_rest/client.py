@@ -61,16 +61,33 @@ class SPRestClient:
                 {"status_code": response.status_code},
             )
 
-        # SP REST envelope: { ok: bool, data?: ..., error?: string }
+        # SP REST envelope: { ok: bool, data?: ..., error?: { code, message, details? } }
         if isinstance(body, dict) and "ok" in body:
             if body.get("ok"):
                 return BridgeResult.success(body.get("data", body))
             else:
-                return BridgeResult.failure(
-                    errors.SP_ERROR,
-                    body.get("error", "Unknown SP error."),
-                    {"status_code": response.status_code, "body": body},
-                )
+                error_val = body.get("error")
+                if isinstance(error_val, dict):
+                    # Structured error: { code: string, message: string, details?: unknown }
+                    code = error_val.get("code", errors.SP_ERROR)
+                    message = error_val.get("message", "Unknown SP error.")
+                    details: dict[str, Any] = {"status_code": response.status_code}
+                    if error_val.get("details") is not None:
+                        details["sp_details"] = error_val["details"]
+                    return BridgeResult.failure(code, message, details)
+                elif isinstance(error_val, str):
+                    # Legacy/fallback: plain string error
+                    return BridgeResult.failure(
+                        errors.SP_ERROR,
+                        error_val,
+                        {"status_code": response.status_code},
+                    )
+                else:
+                    return BridgeResult.failure(
+                        errors.SP_ERROR,
+                        "Unknown SP error.",
+                        {"status_code": response.status_code, "body": body},
+                    )
 
         # If response is successful but not envelope-shaped, return body as data
         if response.is_success:

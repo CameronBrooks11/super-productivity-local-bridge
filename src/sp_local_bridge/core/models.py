@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from sp_local_bridge.core.operations import Operation  # noqa: TC001 — needed at runtime for pydantic validation
 
@@ -14,7 +14,7 @@ class BridgeError(BaseModel):
 
     code: str
     message: str
-    details: dict[str, Any] = {}
+    details: dict[str, Any] = Field(default_factory=dict)
 
 
 class BridgeResult(BaseModel):
@@ -37,4 +37,4 @@ class BridgeRequest(BaseModel):
     """A request to execute a bridge operation."""
 
     operation: Operation
-    payload: dict[str, Any] = {}
+    payload: dict[str, Any] = Field(default_factory=dict)
