@@ -263,16 +263,17 @@ class TestValidation:
         assert result.error.code == errors.INVALID_INPUT
         assert "id" in result.error.message.lower()
 
+    @respx.mock
     @pytest.mark.asyncio
     async def test_task_create_due_with_time_accepts_int(self, service: BridgeService):
         """dueWithTime should accept an integer (Unix ms timestamp)."""
-        # This should pass validation (may fail at REST level, but validation is what we test)
+        respx.post(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new", "title": "OK"}})
+        )
         result = await service.execute(
             BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "dueWithTime": 1717000000000})
         )
-        # Will fail at REST since no mock, but NOT with INVALID_INPUT
-        # We just need it to pass validation — use respx mock
-        assert result.error is None or result.error.code != errors.INVALID_INPUT
+        assert result.ok is True
 
     @pytest.mark.asyncio
     async def test_task_create_due_with_time_rejects_string(self, service: BridgeService):
@@ -286,13 +287,38 @@ class TestValidation:
         assert "dueWithTime" in result.error.message
 
     @pytest.mark.asyncio
+    async def test_task_create_due_with_time_rejects_bool(self, service: BridgeService):
+        """dueWithTime=True should be rejected (bool is not a valid timestamp)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "dueWithTime": True})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "dueWithTime" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_planned_at_rejects_bool(self, service: BridgeService):
+        """plannedAt=False should be rejected (bool is not a valid timestamp)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "plannedAt": False})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "plannedAt" in result.error.message
+
+    @respx.mock
+    @pytest.mark.asyncio
     async def test_task_create_parent_id_valid(self, service: BridgeService):
         """parentId with a valid non-empty string should pass validation."""
+        respx.post(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new", "title": "Sub"}})
+        )
         result = await service.execute(
             BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "Sub", "parentId": "parent-123"})
         )
-        # Passes validation — may fail at REST level without mock
-        assert result.error is None or result.error.code != errors.INVALID_INPUT
+        assert result.ok is True
 
     @pytest.mark.asyncio
     async def test_task_create_parent_id_empty_string_rejected(self, service: BridgeService):

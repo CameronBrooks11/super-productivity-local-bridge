@@ -74,7 +74,7 @@ _TOOLS: list[Tool] = [
                 "projectId": {"type": ["string", "null"], "description": "Project ID to assign."},
                 "tagIds": {"type": "array", "items": {"type": "string"}, "description": "Tag IDs to assign."},
                 "notes": {"type": "string", "description": "Task notes."},
-                "parentId": {"type": ["string", "null"], "description": "Parent task ID for subtasks."},
+                "parentId": {"type": "string", "description": "Parent task ID for subtasks."},
             },
             "required": ["title"],
         },

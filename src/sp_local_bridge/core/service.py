@@ -51,6 +51,13 @@ def _validate_task_fields(payload: dict[str, Any], *, exclude: frozenset[str] = 
         expected = _TASK_FIELD_TYPES.get(field)
         if expected is None:
             continue
+        # Reject bool for int-typed fields (bool is subclass of int in Python)
+        if isinstance(value, bool) and bool not in expected:
+            type_names = " | ".join(t.__name__ for t in expected)
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Field '{field}' must be {type_names}, got bool",
+            )
         if not isinstance(value, expected):
             type_names = " | ".join(t.__name__ for t in expected)
             return BridgeResult.failure(
