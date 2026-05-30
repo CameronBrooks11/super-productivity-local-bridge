@@ -30,6 +30,7 @@ check: install
 	uv run ruff check .
 	uv run pyright
 	uv run pytest
+	uv build --quiet
 
 ## Remove build artifacts
 clean:
