@@ -9,6 +9,7 @@ from sp_local_bridge.core.models import BridgeRequest
 from sp_local_bridge.core.operations import Operation
 from sp_local_bridge.core.service import BridgeService
 from sp_local_bridge.sp_rest.client import SPRestClient
+from tests.conftest import load_fixture
 
 BASE_URL = "http://127.0.0.1:3876"
 
@@ -22,37 +23,34 @@ class TestOperationMapping:
     @respx.mock
     @pytest.mark.asyncio
     async def test_task_list(self, service: BridgeService):
-        respx.get(f"{BASE_URL}/tasks").mock(return_value=httpx.Response(200, json=[{"id": "t1", "title": "Do stuff"}]))
+        respx.get(f"{BASE_URL}/tasks").mock(return_value=httpx.Response(200, json=load_fixture("task-list-ok.json")))
         result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST))
         assert result.ok is True
-        assert result.data == [{"id": "t1", "title": "Do stuff"}]
+        assert result.data == load_fixture("task-list-ok.json")
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_task_get(self, service: BridgeService):
-        respx.get(f"{BASE_URL}/tasks/t1").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "title": "Task"}})
-        )
+        fixture = load_fixture("task-create-ok.json")
+        respx.get(f"{BASE_URL}/tasks/t1").mock(return_value=httpx.Response(200, json=fixture))
         result = await service.execute(BridgeRequest(operation=Operation.TASK_GET, payload={"id": "t1"}))
         assert result.ok is True
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_task_create(self, service: BridgeService):
-        respx.post(f"{BASE_URL}/tasks").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new", "title": "Test"}})
-        )
+        respx.post(f"{BASE_URL}/tasks").mock(return_value=httpx.Response(200, json=load_fixture("task-create-ok.json")))
         result = await service.execute(
             BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "Test", "projectId": "p1"})
         )
         assert result.ok is True
-        assert result.data["title"] == "Test"
+        assert result.data["title"] == "Write integration tests"
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_task_complete(self, service: BridgeService):
         route = respx.patch(f"{BASE_URL}/tasks/t1").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "isDone": True}})
+            return_value=httpx.Response(200, json=load_fixture("task-update-ok.json"))
         )
         result = await service.execute(BridgeRequest(operation=Operation.TASK_COMPLETE, payload={"id": "t1"}))
         assert result.ok is True
@@ -106,26 +104,24 @@ class TestOperationMapping:
     @respx.mock
     @pytest.mark.asyncio
     async def test_project_list(self, service: BridgeService):
-        respx.get(f"{BASE_URL}/projects").mock(return_value=httpx.Response(200, json=[{"id": "p1"}]))
+        respx.get(f"{BASE_URL}/projects").mock(
+            return_value=httpx.Response(200, json=load_fixture("project-list-ok.json"))
+        )
         result = await service.execute(BridgeRequest(operation=Operation.PROJECT_LIST))
         assert result.ok is True
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_tag_list(self, service: BridgeService):
-        respx.get(f"{BASE_URL}/tags").mock(return_value=httpx.Response(200, json=[{"id": "tag1"}]))
+        respx.get(f"{BASE_URL}/tags").mock(return_value=httpx.Response(200, json=load_fixture("tag-list-ok.json")))
         result = await service.execute(BridgeRequest(operation=Operation.TAG_LIST))
         assert result.ok is True
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_bridge_health(self, service: BridgeService):
-        respx.get(f"{BASE_URL}/health").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"status": "up"}})
-        )
-        respx.get(f"{BASE_URL}/status").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"currentTask": None}})
-        )
+        respx.get(f"{BASE_URL}/health").mock(return_value=httpx.Response(200, json=load_fixture("health-ok.json")))
+        respx.get(f"{BASE_URL}/status").mock(return_value=httpx.Response(200, json=load_fixture("status-ok.json")))
         result = await service.execute(BridgeRequest(operation=Operation.BRIDGE_HEALTH))
         assert result.ok is True
         assert "health" in result.data

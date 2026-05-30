@@ -26,7 +26,8 @@ src/sp_local_bridge/       Python package (src layout)
   diagnostics/             Doctor, health checks
   cli.py                   CLI entry point
 tests/                     Pytest tests
-docs/                      Documentation
+scripts/                   Install/uninstall shell scripts
+docs/                      Documentation + host guides
 ```
 
 ## Commands

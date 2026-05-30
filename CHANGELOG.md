@@ -17,8 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Host config generator (`sp-local-bridge-print-config`) for MCP host setup
 - Install/uninstall scripts with `--dry-run` support
 - CI pipeline (GitHub Actions) with Python 3.11/3.12/3.13 matrix
-- 115+ tests covering core validation, REST translation, MCP protocol, and diagnostics
-- REST fixture examples for all supported operations
+- 135+ tests covering core validation, REST translation, MCP protocol, and diagnostics
 - Documentation: operations reference, host setup guides
 
 ### Notes

@@ -6,6 +6,7 @@ import respx
 
 from sp_local_bridge.core import errors
 from sp_local_bridge.sp_rest.client import SPRestClient
+from tests.conftest import load_fixture
 
 BASE_URL = "http://127.0.0.1:3876"
 
@@ -19,9 +20,7 @@ class TestResponseTranslation:
     @respx.mock
     @pytest.mark.asyncio
     async def test_success_envelope(self, client: SPRestClient):
-        respx.get(f"{BASE_URL}/health").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"status": "up"}})
-        )
+        respx.get(f"{BASE_URL}/health").mock(return_value=httpx.Response(200, json=load_fixture("health-ok.json")))
         result = await client.health()
         assert result.ok is True
         assert result.data == {"status": "up"}
@@ -31,10 +30,7 @@ class TestResponseTranslation:
     async def test_structured_error_envelope(self, client: SPRestClient):
         """Real SP returns error as { code, message } object."""
         respx.get(f"{BASE_URL}/tasks").mock(
-            return_value=httpx.Response(
-                503,
-                json={"ok": False, "error": {"code": "APP_NOT_READY", "message": "Renderer is not ready yet"}},
-            )
+            return_value=httpx.Response(503, json=load_fixture("app-not-ready-error.json"))
         )
         result = await client.list_tasks()
         assert result.ok is False
@@ -50,14 +46,7 @@ class TestResponseTranslation:
         respx.post(f"{BASE_URL}/tasks").mock(
             return_value=httpx.Response(
                 400,
-                json={
-                    "ok": False,
-                    "error": {
-                        "code": "INVALID_REQUEST_BODY",
-                        "message": "Invalid request body",
-                        "details": {"field": "title"},
-                    },
-                },
+                json=load_fixture("task-create-error.json"),
             )
         )
         result = await client.create_task({})
@@ -92,10 +81,10 @@ class TestResponseTranslation:
     @pytest.mark.asyncio
     async def test_non_envelope_success(self, client: SPRestClient):
         """SP may return raw JSON arrays/objects without envelope."""
-        respx.get(f"{BASE_URL}/tasks").mock(return_value=httpx.Response(200, json=[{"id": "1", "title": "Task"}]))
+        respx.get(f"{BASE_URL}/tasks").mock(return_value=httpx.Response(200, json=load_fixture("task-list-ok.json")))
         result = await client.list_tasks()
         assert result.ok is True
-        assert result.data == [{"id": "1", "title": "Task"}]
+        assert result.data == load_fixture("task-list-ok.json")
 
 
 class TestConnectionErrors:
@@ -123,11 +112,11 @@ class TestClientMethods:
     @pytest.mark.asyncio
     async def test_create_task(self, client: SPRestClient):
         route = respx.post(f"{BASE_URL}/tasks").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new-1", "title": "Hello"}})
+            return_value=httpx.Response(200, json=load_fixture("task-create-ok.json"))
         )
         result = await client.create_task({"title": "Hello", "projectId": "p1"})
         assert result.ok is True
-        assert result.data == {"id": "new-1", "title": "Hello"}
+        assert result.data == load_fixture("task-create-ok.json")["data"]
         # Verify the request body preserved camelCase fields
         import json
 
@@ -138,7 +127,7 @@ class TestClientMethods:
     @pytest.mark.asyncio
     async def test_update_task(self, client: SPRestClient):
         respx.patch(f"{BASE_URL}/tasks/t1").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "isDone": True}})
+            return_value=httpx.Response(200, json=load_fixture("task-update-ok.json"))
         )
         result = await client.update_task("t1", {"isDone": True})
         assert result.ok is True
@@ -181,15 +170,15 @@ class TestClientMethods:
     @pytest.mark.asyncio
     async def test_list_projects(self, client: SPRestClient):
         respx.get(f"{BASE_URL}/projects").mock(
-            return_value=httpx.Response(200, json=[{"id": "p1", "title": "Project"}])
+            return_value=httpx.Response(200, json=load_fixture("project-list-ok.json"))
         )
         result = await client.list_projects()
         assert result.ok is True
-        assert result.data == [{"id": "p1", "title": "Project"}]
+        assert result.data == load_fixture("project-list-ok.json")
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_list_tags(self, client: SPRestClient):
-        respx.get(f"{BASE_URL}/tags").mock(return_value=httpx.Response(200, json=[{"id": "tag1", "name": "urgent"}]))
+        respx.get(f"{BASE_URL}/tags").mock(return_value=httpx.Response(200, json=load_fixture("tag-list-ok.json")))
         result = await client.list_tags()
         assert result.ok is True
