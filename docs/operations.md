@@ -138,6 +138,30 @@ Same as `task.create` except:
 
 - `task.delete` — intentionally excluded from v1. Deletion is destructive and deferred until explicit destructive-tool semantics are designed.
 
+## Fallback Decision (Phase 3 Gate)
+
+All v0.1 operations are fully supported by the SP Local REST API. **Plugin fallback is deferred.**
+
+| Operation          | REST supported? | PluginAPI supported? | Needed in v0.1? | Decision       |
+|--------------------|-----------------|----------------------|-----------------|----------------|
+| `task.list`        | yes             | yes                  | yes             | REST (done)    |
+| `task.get`         | yes             | yes                  | yes             | REST (done)    |
+| `task.create`      | yes             | yes                  | yes             | REST (done)    |
+| `task.update`      | yes             | yes                  | yes             | REST (done)    |
+| `task.complete`    | yes             | yes                  | yes             | REST (done)    |
+| `task.uncomplete`  | yes             | yes                  | yes             | REST (done)    |
+| `task.start`       | yes             | yes                  | yes             | REST (done)    |
+| `task.stop_current`| yes             | yes                  | yes             | REST (done)    |
+| `task.archive`     | yes             | yes                  | yes             | REST (done)    |
+| `task.restore`     | yes             | yes                  | yes             | REST (done)    |
+| `project.list`     | yes             | yes                  | yes             | REST (done)    |
+| `tag.list`         | yes             | yes                  | yes             | REST (done)    |
+| `bridge.health`    | yes             | n/a                  | yes             | REST (done)    |
+| `project.create`   | no              | yes                  | no              | defer to v0.2  |
+| `tag.create`       | no              | yes                  | no              | defer to v0.2  |
+| `notification.show`| no              | yes                  | no              | defer to v0.2  |
+| `task.delete`      | no              | yes                  | no              | defer (destructive) |
+
 ## Known REST Gaps
 
 These operations are not available via the Local REST API and are candidates for a future PluginAPI fallback:

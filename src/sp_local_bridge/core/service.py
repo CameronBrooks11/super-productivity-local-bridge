@@ -73,6 +73,27 @@ def _validate_task_fields(payload: dict[str, Any], *, exclude: frozenset[str] = 
     return None
 
 
+def _validate_no_payload(payload: dict[str, Any]) -> BridgeResult | None:
+    """Reject unexpected fields on no-payload operations."""
+    if payload:
+        return BridgeResult.failure(
+            errors.INVALID_INPUT,
+            f"This operation takes no payload, got: {', '.join(sorted(payload.keys()))}",
+        )
+    return None
+
+
+def _validate_id_only(payload: dict[str, Any]) -> BridgeResult | None:
+    """Reject unexpected fields on id-only operations (only 'id' allowed)."""
+    extra = set(payload.keys()) - {"id"}
+    if extra:
+        return BridgeResult.failure(
+            errors.INVALID_INPUT,
+            f"This operation only accepts 'id', got extra: {', '.join(sorted(extra))}",
+        )
+    return None
+
+
 class BridgeService:
     """Maps core bridge operations to SP REST API calls."""
 
@@ -90,9 +111,15 @@ class BridgeService:
         return await handler(self, request.payload)
 
     async def _task_list(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
         return await self._client.list_tasks()
 
     async def _task_get(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
@@ -135,45 +162,72 @@ class BridgeService:
         return await self._client.update_task(task_id, update_data)
 
     async def _task_complete(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
         return await self._client.update_task(task_id, {"isDone": True})
 
     async def _task_uncomplete(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
         return await self._client.update_task(task_id, {"isDone": False})
 
     async def _task_start(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
         return await self._client.start_task(task_id)
 
     async def _task_stop_current(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
         return await self._client.stop_current_task()
 
     async def _task_archive(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
         return await self._client.archive_task(task_id)
 
     async def _task_restore(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_id_only(payload)
+        if err:
+            return err
         task_id = _validate_id(payload)
         if not task_id:
             return BridgeResult.failure(errors.INVALID_INPUT, "Missing required field: id (non-empty string)")
         return await self._client.restore_task(task_id)
 
     async def _project_list(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
         return await self._client.list_projects()
 
     async def _tag_list(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
         return await self._client.list_tags()
 
     async def _bridge_health(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
         health = await self._client.health()
         if not health.ok:
             return health
