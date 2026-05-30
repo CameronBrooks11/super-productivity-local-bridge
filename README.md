@@ -34,8 +34,8 @@ cd super-productivity-local-bridge
 # Install
 uv sync
 
-# Verify
-uv run sp-local-bridge health
+# Verify install
+uv run sp-local-bridge --help
 ```
 
 ## Development

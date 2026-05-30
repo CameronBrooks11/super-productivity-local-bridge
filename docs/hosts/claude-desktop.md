@@ -23,4 +23,5 @@ Then restart Claude Desktop.
 
 1. Super Productivity desktop app running with Local REST API enabled (Settings → Misc)
 2. `sp-local-bridge` installed (`uv tool install sp-local-bridge` or from source)
-3. Verify with: `sp-local-bridge-doctor`
+
+> **Note:** The MCP adapter is not yet implemented. This document describes the target configuration.
