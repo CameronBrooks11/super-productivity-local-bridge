@@ -36,6 +36,18 @@ uv sync
 
 # Verify install
 uv run sp-local-bridge --help
+
+# Check SP connectivity (requires SP desktop app with Local REST API enabled)
+uv run sp-local-bridge health
+
+# List tasks
+uv run sp-local-bridge tasks list
+
+# Create a task
+uv run sp-local-bridge tasks add "Review budget"
+
+# List projects
+uv run sp-local-bridge projects list
 ```
 
 ## Development
@@ -59,7 +71,7 @@ uv run pre-commit run --all-files  # Run manually
 
 ## Project Status
 
-**0.1.0.dev0** — scaffold and bootstrap complete. Core operations and REST client not yet implemented.
+**0.1.0.dev0** — core operations, REST client, and CLI functional. MCP adapter wired. Requires SP desktop app with Local REST API enabled.
 
 ## License
 
