@@ -1,12 +1,12 @@
-# VS Code Copilot Host Configuration
+# VS Code Copilot
 
 ## Prerequisites
 
-1. [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Misc)
-2. `sp-local-bridge` installed (see below)
-3. VS Code with GitHub Copilot Chat extension
+- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Misc)
+- [VS Code](https://code.visualstudio.com/) with GitHub Copilot Chat extension
+- `sp-local-bridge` installed ([Getting Started](../getting-started.md))
 
-## Install
+## Install Bridge
 
 ```sh
 git clone https://github.com/CameronBrooks11/super-productivity-local-bridge.git
@@ -14,14 +14,14 @@ cd super-productivity-local-bridge
 scripts/install.sh
 ```
 
-## Configure VS Code
+## Generate Config
 
-Run:
 ```sh
 sp-local-bridge-print-config vscode-copilot
 ```
 
-Output:
+Example output:
+
 ```json
 {
   "servers": {
@@ -34,14 +34,22 @@ Output:
 }
 ```
 
-Add the above to `.vscode/mcp.json` in your workspace (for project-scoped access) or run `MCP: Open User Configuration` from the Command Palette for global access.
+The command path will be resolved to your actual installation location.
 
-VS Code will prompt you to trust the server on first use. Accept the prompt to start the server.
+Use `--bare` for a bare command name (only works if `~/.local/bin` is on VS Code's PATH).
 
-If you prefer a bare command name (only works if `~/.local/bin` is on VS Code's PATH):
-```sh
-sp-local-bridge-print-config --bare vscode-copilot
-```
+## Add Config
+
+Add the output to one of:
+
+- **Workspace:** `.vscode/mcp.json` in your project root
+- **Global:** Command Palette → `MCP: Open User Configuration`
+
+## Restart or Reload Host
+
+VS Code will detect the new config automatically. If prompted, trust the MCP server.
+
+If tools don't appear, run `MCP: Reset Cached Tools` from the Command Palette or restart VS Code.
 
 ## Verify
 
@@ -49,15 +57,20 @@ sp-local-bridge-print-config --bare vscode-copilot
 sp-local-bridge-doctor
 ```
 
-Or use the MCP tools directly in Copilot Chat — ask it to check Super Productivity health.
-
-## Available Tools
-
-Once configured, Copilot Chat can use 13 tools: `health`, `list_tasks`, `get_task`, `create_task`, `update_task`, `complete_task`, `uncomplete_task`, `start_task`, `stop_current_task`, `archive_task`, `restore_task`, `list_projects`, `list_tags`.
+Or ask Copilot Chat to check Super Productivity health — it will invoke the `bridge_health` tool.
 
 ## Troubleshooting
 
-- **Server not starting**: Check the MCP output log — run `MCP: List Servers` from Command Palette, select the server, then "Show Output".
-- **SP unreachable**: Ensure Super Productivity is running and Local REST API is enabled in Settings → Misc.
-- **Tools not appearing**: Run `MCP: Reset Cached Tools` from the Command Palette, or restart the server.
-- **Command not found**: Re-run `sp-local-bridge-print-config vscode-copilot` — it resolves the absolute path to the installed binary.
+| Problem | Fix |
+|---------|-----|
+| Server not starting | Run `MCP: List Servers` → select server → "Show Output" for logs |
+| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Misc) |
+| Tools not appearing | `MCP: Reset Cached Tools` or restart VS Code |
+| Command not found | Re-run `sp-local-bridge-print-config vscode-copilot` for absolute path |
+
+See also: [Troubleshooting](../troubleshooting.md)
+
+## Uninstall Cleanup
+
+1. Remove the `superProductivity` entry from `.vscode/mcp.json` or user settings
+2. Optionally run `scripts/uninstall.sh` to remove the bridge binary
