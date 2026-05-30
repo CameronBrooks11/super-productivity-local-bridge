@@ -203,3 +203,42 @@ class TestUninstallScript:
         )
         assert result.returncode == 0
         assert "Uninstall" in result.stdout
+
+    def test_actual_uninstall_removes_tool(self):
+        """Uninstall should remove the previously installed tool."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tool_dir = os.path.join(tmpdir, "tools")
+            bin_dir = os.path.join(tmpdir, "bin")
+            os.makedirs(tool_dir, exist_ok=True)
+            os.makedirs(bin_dir, exist_ok=True)
+
+            env = os.environ.copy()
+            env["UV_TOOL_DIR"] = tool_dir
+            env["UV_TOOL_BIN_DIR"] = bin_dir
+
+            # Install first
+            repo_dir = os.path.dirname(SCRIPTS_DIR)
+            install_result = subprocess.run(
+                ["uv", "tool", "install", "--reinstall", "--from", repo_dir, "sp-local-bridge"],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            assert install_result.returncode == 0, f"Install failed: {install_result.stderr}"
+
+            # Verify installed
+            cli_cmd = os.path.join(bin_dir, "sp-local-bridge")
+            assert os.path.isfile(cli_cmd), "sp-local-bridge not found after install"
+
+            # Uninstall
+            uninstall_result = subprocess.run(
+                [UNINSTALL_SCRIPT],
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            assert uninstall_result.returncode == 0
+            assert "uninstalled" in uninstall_result.stdout.lower()
+
+            # Verify removed
+            assert not os.path.isfile(cli_cmd), "sp-local-bridge still exists after uninstall"

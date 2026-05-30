@@ -90,11 +90,21 @@ install_package() {
         action "Installing sp-local-bridge..."
         # Always use --reinstall to guarantee a fresh build from source.
         # Without it, uv may reuse a cached wheel for the same version string.
-        if uv tool install --reinstall --from "$SCRIPT_DIR" sp-local-bridge 2>/dev/null; then
+        local uv_output
+        if uv_output=$(uv tool install --reinstall --from "$SCRIPT_DIR" sp-local-bridge 2>&1); then
             info "✓ sp-local-bridge installed (fresh build)"
+            if [[ "$VERBOSE" == "true" ]]; then
+                info "$uv_output"
+            fi
         else
             error "Could not install via 'uv tool install'."
             error "Try manually: cd '$SCRIPT_DIR' && uv tool install --reinstall --from . sp-local-bridge"
+            if [[ "$VERBOSE" == "true" ]]; then
+                error "uv output:"
+                printf "%s\n" "$uv_output" >&2
+            else
+                error "Re-run with --verbose for details."
+            fi
             exit 1
         fi
     fi
