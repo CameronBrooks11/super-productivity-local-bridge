@@ -103,15 +103,36 @@ The MCP adapter maps snake_case tool names to core operations:
 
 ## Payload Fields
 
-Use Super Productivity's native camelCase field names at all REST boundaries:
+Use Super Productivity's native camelCase field names at all REST boundaries.
 
-- `projectId` — project association
-- `tagIds` — tag associations (array)
-- `parentId` — parent task for subtasks
-- `plannedAt` — planned date/time
-- `dueDay` — due date (date only)
-- `dueWithTime` — due with specific time
-- `isDone` — completion status
+### `task.create` fields
+
+| Field         | Type                    | Required | Notes                                                |
+|---------------|-------------------------|----------|------------------------------------------------------|
+| `title`       | `string`                | **yes**  | Non-empty                                            |
+| `projectId`   | `string \| null`        | no       | Project to assign                                    |
+| `tagIds`      | `string[]`              | no       | Tag IDs to assign                                    |
+| `notes`       | `string`                | no       | Task notes                                           |
+| `parentId`    | `string`                | no       | Parent task ID (subtask). **Create-only.** Cannot be combined with `projectId` or `tagIds` (subtasks inherit from parent) |
+| `plannedAt`   | `string \| int \| null` | no       | Planned date/time (ISO string or Unix ms timestamp)  |
+| `dueDay`      | `string \| null`        | no       | Due date (YYYY-MM-DD format)                         |
+| `dueWithTime` | `int \| null`           | no       | Due date+time as Unix millisecond timestamp          |
+| `isDone`      | `boolean`               | no       | Completion status                                    |
+
+### `task.update` fields
+
+Same as `task.create` except:
+- `id` is **required** (identifies the task to update)
+- `parentId` is **not allowed** (upstream rejects it on PATCH)
+- At least one field besides `id` must be provided
+
+### ID-only operations
+
+`task.get`, `task.complete`, `task.uncomplete`, `task.start`, `task.archive`, `task.restore` require only `{ "id": "<task-id>" }`.
+
+### No-payload operations
+
+`task.list`, `task.stop_current`, `project.list`, `tag.list`, `bridge.health` take no payload.
 
 ## Excluded Operations
 

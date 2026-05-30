@@ -66,7 +66,7 @@ _TOOLS: list[Tool] = [
     ),
     Tool(
         name="create_task",
-        description="Create a new task. Accepts title, optional projectId, tagIds, notes, parentId.",
+        description="Create a new task with a title and optional fields (see schema).",
         inputSchema={
             "type": "object",
             "properties": {
@@ -74,7 +74,20 @@ _TOOLS: list[Tool] = [
                 "projectId": {"type": ["string", "null"], "description": "Project ID to assign."},
                 "tagIds": {"type": "array", "items": {"type": "string"}, "description": "Tag IDs to assign."},
                 "notes": {"type": "string", "description": "Task notes."},
-                "parentId": {"type": "string", "description": "Parent task ID for subtasks."},
+                "parentId": {
+                    "type": "string",
+                    "description": "Parent task ID for subtasks. Cannot be combined with projectId or tagIds.",
+                },
+                "plannedAt": {
+                    "type": ["integer", "string", "null"],
+                    "description": "Planned date/time (Unix ms timestamp, ISO string, or null to clear).",
+                },
+                "dueDay": {"type": ["string", "null"], "description": "Due date (YYYY-MM-DD or null to clear)."},
+                "dueWithTime": {
+                    "type": ["integer", "null"],
+                    "description": "Due date+time as Unix ms timestamp, or null to clear.",
+                },
+                "isDone": {"type": "boolean", "description": "Completion status."},
             },
             "required": ["title"],
         },
@@ -82,15 +95,25 @@ _TOOLS: list[Tool] = [
     ),
     Tool(
         name="update_task",
-        description="Update an existing task by ID. Pass fields to change.",
+        description="Update an existing task by ID. Pass only the fields to change.",
         inputSchema={
             "type": "object",
             "properties": {
                 "id": {"type": "string", "description": "Task ID."},
                 "title": {"type": "string", "description": "New title."},
                 "notes": {"type": "string", "description": "New notes."},
-                "projectId": {"type": ["string", "null"], "description": "New project ID."},
+                "projectId": {"type": ["string", "null"], "description": "New project ID or null to clear."},
                 "tagIds": {"type": "array", "items": {"type": "string"}, "description": "New tag IDs."},
+                "plannedAt": {
+                    "type": ["integer", "string", "null"],
+                    "description": "Planned date/time (Unix ms timestamp, ISO string, or null to clear).",
+                },
+                "dueDay": {"type": ["string", "null"], "description": "Due date (YYYY-MM-DD or null to clear)."},
+                "dueWithTime": {
+                    "type": ["integer", "null"],
+                    "description": "Due date+time as Unix ms timestamp, or null to clear.",
+                },
+                "isDone": {"type": "boolean", "description": "Completion status."},
             },
             "required": ["id"],
         },
