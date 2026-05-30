@@ -15,9 +15,9 @@ Verified:
 
 ## Live Integration Test
 
-**Date:** 2026-05-30  
-**Host:** VS Code Copilot (MCP via `.vscode/mcp.json`)  
-**SP Version:** Super Productivity desktop app with Local REST API enabled  
+**Date:** 2026-05-30
+**Host:** VS Code Copilot (MCP via `.vscode/mcp.json`)
+**SP Version:** Super Productivity desktop app with Local REST API enabled
 **Bridge Version:** 0.1.0
 
 ### Tools Validated

@@ -9,6 +9,12 @@ dist/
 build/
 MANIFEST
 
+# Node (docs site only)
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+package-lock.json
+
 # Virtual environments
 .venv/
 venv/
