@@ -9,6 +9,12 @@ from sp_local_bridge.diagnostics.doctor import _Check, _print_report, _run_check
 BASE_URL = "http://127.0.0.1:3876"
 
 
+@pytest.fixture(autouse=True)
+def _isolate_env(monkeypatch):
+    """Ensure SP_BASE_URL is not set so doctor uses the default base URL."""
+    monkeypatch.delenv("SP_BASE_URL", raising=False)
+
+
 class TestDoctorChecks:
     @respx.mock
     @pytest.mark.asyncio

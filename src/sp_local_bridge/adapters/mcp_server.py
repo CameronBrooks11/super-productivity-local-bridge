@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 from typing import Any
 
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import CallToolResult, TextContent, Tool, ToolAnnotations
+from mcp.shared.exceptions import McpError
+from mcp.types import INVALID_PARAMS, CallToolResult, ErrorData, TextContent, Tool, ToolAnnotations
 
 from sp_local_bridge.core.models import BridgeRequest, BridgeResult
 from sp_local_bridge.core.operations import Operation
@@ -236,7 +238,19 @@ def _result_to_structured(result: BridgeResult) -> dict[str, Any] | CallToolResu
 
 async def _serve() -> None:
     """Run the MCP stdio server."""
-    service = BridgeService(SPRestClient())
+    base_url = os.environ.get("SP_BASE_URL")
+    client = SPRestClient(base_url=base_url) if base_url else SPRestClient()
+    service = BridgeService(client)
+    server = create_server(service)
+
+    async with stdio_server() as (read_stream, write_stream):
+        await server.run(read_stream, write_stream, server.create_initialization_options())
+
+
+def create_server(service: BridgeService | None = None) -> Server:
+    """Create and configure the MCP server. Useful for testing."""
+    if service is None:
+        service = BridgeService(SPRestClient())
     server = Server("sp-local-bridge")
 
     @server.list_tools()
@@ -247,16 +261,14 @@ async def _serve() -> None:
     async def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any] | CallToolResult:
         operation = _TOOL_MAP.get(name)
         if operation is None:
-            # Unknown tool is a protocol-level error — raise so MCP SDK returns isError=True
-            raise ValueError(f"Unknown tool: {name}")
+            raise McpError(ErrorData(code=INVALID_PARAMS, message=f"Unknown tool: {name}"))
 
         payload = arguments or {}
         request = BridgeRequest(operation=operation, payload=payload)
         result = await service.execute(request)
         return _result_to_structured(result)
 
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    return server
 
 
 def main() -> None:

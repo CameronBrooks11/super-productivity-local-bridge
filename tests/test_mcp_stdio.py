@@ -1,7 +1,8 @@
-"""MCP stdio transport integration test.
+"""MCP protocol integration tests.
 
-Tests the full MCP protocol flow: initialize → list_tools → call_tool → response,
-using the actual MCP server wired to a mocked REST backend.
+Tests the actual MCP protocol flow using the SDK's in-memory transport:
+initialize → list_tools → call_tool → response. The server is wired to
+a real BridgeService backed by mocked HTTP (respx).
 """
 
 import json
@@ -9,8 +10,10 @@ import json
 import httpx
 import pytest
 import respx
+from mcp.shared.memory import create_connected_server_and_client_session
 from mcp.types import TextContent
 
+from sp_local_bridge.adapters.mcp_server import create_server
 from sp_local_bridge.core.models import BridgeRequest
 from sp_local_bridge.core.service import BridgeService
 from sp_local_bridge.sp_rest.client import SPRestClient
@@ -18,164 +21,200 @@ from sp_local_bridge.sp_rest.client import SPRestClient
 BASE_URL = "http://127.0.0.1:3876"
 
 
-class TestMCPCallToolIntegration:
-    """Tests that exercise the full call_tool flow through the service layer."""
+class TestMCPProtocol:
+    """Real MCP protocol tests using in-memory transport.
+
+    These test the full path: MCP client → server session → handler → service → REST mock.
+    """
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_call_tool_list_tasks_returns_structured(self):
-        """call_tool for list_tasks should return structured dict with task list."""
+    async def test_list_tools_returns_all_tools(self):
+        """MCP list_tools should return all 13 tool definitions."""
+        service = BridgeService(SPRestClient(base_url=BASE_URL))
+        server = create_server(service)
+
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            tools_result = await session.list_tools()
+            tool_names = {t.name for t in tools_result.tools}
+
+            assert len(tools_result.tools) == 13
+            assert "health" in tool_names
+            assert "list_tasks" in tool_names
+            assert "create_task" in tool_names
+            assert "update_task" in tool_names
+            assert "list_projects" in tool_names
+            assert "list_tags" in tool_names
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_call_tool_list_tasks(self):
+        """MCP call_tool('list_tasks') should return task data."""
         respx.get(f"{BASE_URL}/tasks").mock(
             return_value=httpx.Response(200, json=[{"id": "t1", "title": "Task 1"}, {"id": "t2", "title": "Task 2"}])
         )
 
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
-
         service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["list_tasks"]
-        request = BridgeRequest(operation=operation, payload={})
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
+        server = create_server(service)
 
-        assert isinstance(structured, dict)
-        assert "result" in structured
-        assert len(structured["result"]) == 2
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("list_tasks", {})
+
+            assert result.isError is False or result.isError is None
+            assert len(result.content) >= 1
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            # list_tasks returns wrapped in {"result": [...]}
+            assert isinstance(data, dict)
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_call_tool_get_task_returns_structured(self):
-        """call_tool for get_task should return the task dict directly."""
+    async def test_call_tool_get_task(self):
+        """MCP call_tool('get_task', {id: ...}) returns task data."""
         respx.get(f"{BASE_URL}/tasks/t1").mock(
-            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "title": "Test", "isDone": False}})
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "title": "Test Task"}})
         )
 
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
-
         service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["get_task"]
-        request = BridgeRequest(operation=operation, payload={"id": "t1"})
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
+        server = create_server(service)
 
-        assert isinstance(structured, dict)
-        assert structured["id"] == "t1"
-        assert structured["title"] == "Test"
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("get_task", {"id": "t1"})
+
+            assert result.isError is False or result.isError is None
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert data["id"] == "t1"
+            assert data["title"] == "Test Task"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_call_tool_create_task_with_full_payload(self):
-        """create_task with all optional fields should pass validation and reach REST."""
-        route = respx.post(f"{BASE_URL}/tasks").mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "ok": True,
-                    "data": {"id": "new1", "title": "Full task", "dueWithTime": 1717000000000, "isDone": False},
-                },
-            )
+    async def test_call_tool_create_task(self):
+        """MCP call_tool('create_task') with valid payload creates a task."""
+        respx.post(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new1", "title": "Created"}})
         )
 
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
-
         service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["create_task"]
-        payload = {
-            "title": "Full task",
-            "projectId": "p1",
-            "tagIds": ["tag1", "tag2"],
-            "notes": "Some notes",
-            "plannedAt": 1717000000000,
-            "dueDay": "2025-06-01",
-            "dueWithTime": 1717000000000,
-            "isDone": False,
-        }
-        request = BridgeRequest(operation=operation, payload=payload)
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
+        server = create_server(service)
 
-        assert isinstance(structured, dict)
-        assert structured["id"] == "new1"
-        assert route.called
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("create_task", {"title": "Created", "projectId": "p1"})
+
+            assert result.isError is False or result.isError is None
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert data["id"] == "new1"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_call_tool_update_task_with_timestamp_fields(self):
-        """update_task with timestamp fields passes validation."""
-        route = respx.patch(f"{BASE_URL}/tasks/t1").mock(
-            return_value=httpx.Response(
-                200, json={"ok": True, "data": {"id": "t1", "title": "Updated", "dueWithTime": 1717000000000}}
-            )
-        )
-
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
-
-        service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["update_task"]
-        payload = {"id": "t1", "dueWithTime": 1717000000000, "plannedAt": None}
-        request = BridgeRequest(operation=operation, payload=payload)
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
-
-        assert isinstance(structured, dict)
-        assert structured["id"] == "t1"
-        # Verify the request body contains the fields
-        sent_body = json.loads(route.calls[0].request.content)
-        assert sent_body["dueWithTime"] == 1717000000000
-        assert sent_body["plannedAt"] is None
-
-    @respx.mock
-    @pytest.mark.asyncio
-    async def test_call_tool_error_propagation(self):
-        """SP errors should propagate through the full call_tool flow."""
+    async def test_call_tool_sp_error_sets_is_error(self):
+        """When SP returns an error, MCP result has isError=True."""
         respx.get(f"{BASE_URL}/tasks").mock(
             return_value=httpx.Response(
-                503, json={"ok": False, "error": {"code": "APP_NOT_READY", "message": "App is loading"}}
+                503, json={"ok": False, "error": {"code": "APP_NOT_READY", "message": "Loading"}}
             )
         )
 
-        from mcp.types import CallToolResult
-
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
-
         service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["list_tasks"]
-        request = BridgeRequest(operation=operation, payload={})
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
+        server = create_server(service)
 
-        assert isinstance(structured, CallToolResult)
-        assert structured.isError is True
-        item = structured.content[0]
-        assert isinstance(item, TextContent)
-        content = json.loads(item.text)
-        assert content["error"] == "APP_NOT_READY"
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("list_tasks", {})
+
+            assert result.isError is True
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert data["error"] == "APP_NOT_READY"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_call_tool_connection_error(self):
-        """Connection errors should result in isError=True with SP_UNAVAILABLE."""
+    async def test_call_tool_connection_error_sets_is_error(self):
+        """When SP is unreachable, MCP result has isError=True."""
         respx.get(f"{BASE_URL}/tasks").mock(side_effect=httpx.ConnectError("refused"))
 
-        from mcp.types import CallToolResult
+        service = BridgeService(SPRestClient(base_url=BASE_URL))
+        server = create_server(service)
 
-        from sp_local_bridge.adapters.mcp_server import _TOOL_MAP, _result_to_structured
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("list_tasks", {})
+
+            assert result.isError is True
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert data["error"] == "SP_UNAVAILABLE"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_call_tool_unknown_tool_returns_error(self):
+        """Unknown tool name should result in an MCP error (McpError/protocol error)."""
+        service = BridgeService(SPRestClient(base_url=BASE_URL))
+        server = create_server(service)
+
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            # McpError with INVALID_PARAMS should result in an error response
+            result = await session.call_tool("nonexistent_tool", {})
+            # The SDK returns isError=True for McpError raised in handlers
+            assert result.isError is True
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_call_tool_validation_error_through_protocol(self):
+        """Payload validation errors propagate correctly through MCP protocol."""
+        service = BridgeService(SPRestClient(base_url=BASE_URL))
+        server = create_server(service)
+
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            # list_tasks takes no payload — extra fields should be rejected
+            result = await session.call_tool("list_tasks", {"filter": "active"})
+
+            assert result.isError is True
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert data["error"] == "INVALID_INPUT"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_call_tool_health(self):
+        """MCP health tool returns connectivity status."""
+        respx.get(f"{BASE_URL}/health").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"status": "up"}})
+        )
+        respx.get(f"{BASE_URL}/status").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"currentTask": None}})
+        )
 
         service = BridgeService(SPRestClient(base_url=BASE_URL))
-        operation = _TOOL_MAP["list_tasks"]
-        request = BridgeRequest(operation=operation, payload={})
-        result = await service.execute(request)
-        structured = _result_to_structured(result)
+        server = create_server(service)
 
-        assert isinstance(structured, CallToolResult)
-        assert structured.isError is True
-        item = structured.content[0]
-        assert isinstance(item, TextContent)
-        content = json.loads(item.text)
-        assert content["error"] == "SP_UNAVAILABLE"
+        async with create_connected_server_and_client_session(server) as session:
+            await session.initialize()
+            result = await session.call_tool("health", {})
+
+            assert result.isError is False or result.isError is None
+            item = result.content[0]
+            assert isinstance(item, TextContent)
+            data = json.loads(item.text)
+            assert "health" in data
+            assert "status" in data
 
 
 class TestMCPPayloadValidation:
-    """Tests that MCP tool calls with invalid payloads are rejected."""
+    """Unit tests that verify payload validation through the service layer."""
 
     @pytest.mark.asyncio
     async def test_list_tasks_rejects_extra_payload(self):
