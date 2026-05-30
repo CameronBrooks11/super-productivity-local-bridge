@@ -6,12 +6,39 @@ import sys
 
 import pytest
 
-from sp_local_bridge.diagnostics.host_config import _HOSTS, _print_config
+from sp_local_bridge.diagnostics.host_config import _HOSTS, _build_config, _print_config, _resolve_mcp_command
+
+
+class TestResolveMcpCommand:
+    def test_resolves_to_string(self):
+        result = _resolve_mcp_command()
+        assert isinstance(result, str)
+        assert "sp-local-bridge-mcp" in result
+
+    def test_resolves_absolute_when_on_path(self):
+        """If installed, should resolve to an absolute path."""
+        result = _resolve_mcp_command()
+        # In dev environment with uv sync, should find it
+        if result != "sp-local-bridge-mcp":
+            assert result.startswith("/")
+
+
+class TestBuildConfig:
+    def test_bare_mode_uses_command_name(self):
+        config = _build_config("claude-desktop", absolute=False)
+        cmd = config["mcpServers"]["super-productivity"]["command"]
+        assert cmd == "sp-local-bridge-mcp"
+
+    def test_absolute_mode_resolves_path(self):
+        config = _build_config("claude-desktop", absolute=True)
+        cmd = config["mcpServers"]["super-productivity"]["command"]
+        # Should be either absolute or fallback bare name
+        assert "sp-local-bridge-mcp" in cmd
 
 
 class TestPrintConfig:
     def test_claude_desktop_returns_valid_json(self, capsys: pytest.CaptureFixture[str]):
-        exit_code = _print_config("claude-desktop")
+        exit_code = _print_config("claude-desktop", absolute=False)
         assert exit_code == 0
         output = capsys.readouterr().out
         # First section should be valid JSON
@@ -21,6 +48,17 @@ class TestPrintConfig:
         assert "super-productivity" in config["mcpServers"]
         assert config["mcpServers"]["super-productivity"]["command"] == "sp-local-bridge-mcp"
 
+    def test_absolute_mode_outputs_valid_json(self, capsys: pytest.CaptureFixture[str]):
+        exit_code = _print_config("claude-desktop", absolute=True)
+        assert exit_code == 0
+        output = capsys.readouterr().out
+        json_str = output.split("\n\n")[0]
+        config = json.loads(json_str)
+        assert "mcpServers" in config
+        # Command should contain the mcp substring regardless of resolution
+        cmd = config["mcpServers"]["super-productivity"]["command"]
+        assert "sp-local-bridge-mcp" in cmd
+
     def test_unknown_host_returns_error(self, capsys: pytest.CaptureFixture[str]):
         exit_code = _print_config("unknown-host")
         assert exit_code == 2
@@ -29,7 +67,7 @@ class TestPrintConfig:
 
     def test_all_hosts_have_required_keys(self):
         for host, entry in _HOSTS.items():
-            assert "config" in entry, f"{host} missing 'config'"
+            assert "config_template" in entry, f"{host} missing 'config_template'"
             assert "paths" in entry, f"{host} missing 'paths'"
             paths = entry["paths"]
             assert isinstance(paths, dict)
@@ -47,6 +85,7 @@ class TestPrintConfigCLI:
         )
         assert result.returncode == 0
         assert "Supported hosts" in result.stdout
+        assert "--absolute" in result.stdout
 
     def test_no_args_shows_usage(self):
         result = subprocess.run(
@@ -56,3 +95,13 @@ class TestPrintConfigCLI:
         )
         assert result.returncode == 2
         assert "Usage" in result.stdout
+
+    def test_bare_flag(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "sp_local_bridge.diagnostics.host_config", "--bare", "claude-desktop"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        config = json.loads(result.stdout.split("\n\n")[0])
+        assert config["mcpServers"]["super-productivity"]["command"] == "sp-local-bridge-mcp"

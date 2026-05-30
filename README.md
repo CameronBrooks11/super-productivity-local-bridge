@@ -1,6 +1,6 @@
 # Super Productivity Local Bridge
 
-Local automation bridge for [Super Productivity](https://super-productivity.com/) — control tasks, projects, and tags from external tools.
+Local automation bridge for [Super Productivity](https://super-productivity.com/) — control tasks, projects, and tags from external tools via MCP, CLI, or any host adapter.
 
 ## Architecture
 
@@ -24,30 +24,53 @@ The bridge uses the Super Productivity Local REST API as the primary app-control
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
 
-## Quick Start
+## Install
 
 ```sh
-# Clone
 git clone https://github.com/CameronBrooks11/super-productivity-local-bridge.git
 cd super-productivity-local-bridge
+scripts/install.sh
+```
 
-# Install
-uv sync
+The install script will:
+1. Check prerequisites (Python 3.11+, uv)
+2. Install the bridge as a tool (`uv tool install`)
+3. Verify all commands are accessible
+4. Print next steps
 
-# Verify install
-uv run sp-local-bridge --help
+Use `scripts/install.sh --dry-run` to preview without making changes.
 
-# Check SP connectivity (requires SP desktop app with Local REST API enabled)
-uv run sp-local-bridge health
+### Configure MCP Host (Claude Desktop)
 
-# List tasks
-uv run sp-local-bridge tasks list
+```sh
+sp-local-bridge-print-config claude-desktop
+```
 
-# Create a task
-uv run sp-local-bridge tasks add "Review budget"
+This prints a JSON snippet with the **absolute path** to the MCP server command. Add it to your Claude Desktop config file (path shown in output), then restart Claude Desktop.
 
-# List projects
-uv run sp-local-bridge projects list
+See [docs/hosts/claude-desktop.md](docs/hosts/claude-desktop.md) for full instructions.
+
+### Verify
+
+```sh
+sp-local-bridge-doctor
+```
+
+### Uninstall
+
+```sh
+scripts/uninstall.sh
+```
+
+## CLI Usage
+
+```sh
+sp-local-bridge health              # Check SP connectivity
+sp-local-bridge tasks list          # List all tasks
+sp-local-bridge tasks get <id>      # Get a task by ID
+sp-local-bridge tasks add "Title"   # Create a new task
+sp-local-bridge projects list       # List all projects
+sp-local-bridge tags list           # List all tags
 ```
 
 ## Development
@@ -59,7 +82,7 @@ uv run ruff check .             # Lint
 uv run pyright                  # Type check
 uv run pytest                   # Run tests
 uv run pytest --cov             # Tests with coverage
-make check                      # All checks (format, lint, types, tests)
+make check                      # All checks (format, lint, types, tests, build)
 ```
 
 ### Pre-commit hooks

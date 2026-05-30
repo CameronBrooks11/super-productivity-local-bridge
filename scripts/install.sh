@@ -2,10 +2,11 @@
 set -euo pipefail
 
 # Install script for Super Productivity Local Bridge.
-# Installs the Python package via uv, verifies prerequisites, and prints next steps.
+# Installs the Python package via uv, verifies commands are accessible, and prints next steps.
 
 DRY_RUN=false
 VERBOSE=false
+INSTALL_OK=true
 
 usage() {
     cat <<EOF
@@ -68,6 +69,18 @@ check_prerequisites() {
     fi
 }
 
+# Resolve the uv tool bin directory (where executables are placed)
+resolve_tool_bin_dir() {
+    # uv tool dir gives the tool environment root; bin is alongside at ../bin
+    # But the canonical way is to check UV_TOOL_BIN_DIR or default
+    if [[ -n "${UV_TOOL_BIN_DIR:-}" ]]; then
+        echo "$UV_TOOL_BIN_DIR"
+    else
+        # Default location per uv docs
+        echo "${HOME}/.local/bin"
+    fi
+}
+
 install_package() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -80,12 +93,13 @@ install_package() {
         if uv tool install --from "$script_dir" sp-local-bridge 2>/dev/null; then
             info "✓ sp-local-bridge installed"
         else
-            # May already be installed — try upgrade
-            if uv tool upgrade --from "$script_dir" sp-local-bridge 2>/dev/null; then
-                info "✓ sp-local-bridge upgraded"
+            # May already be installed — try reinstall
+            if uv tool install --from "$script_dir" --force sp-local-bridge 2>/dev/null; then
+                info "✓ sp-local-bridge reinstalled"
             else
-                warn "Could not install via 'uv tool'. Try: uv pip install -e '$script_dir'"
-                return 1
+                error "Could not install via 'uv tool install'."
+                error "Try manually: cd '$script_dir' && uv tool install --from . sp-local-bridge"
+                exit 1
             fi
         fi
     fi
@@ -93,27 +107,62 @@ install_package() {
 
 verify_install() {
     if [[ "$DRY_RUN" == "true" ]]; then
-        action "[dry-run] Would verify: sp-local-bridge --version"
-        action "[dry-run] Would verify: sp-local-bridge-doctor"
+        local bin_dir
+        bin_dir=$(resolve_tool_bin_dir)
+        action "[dry-run] Would verify commands in: $bin_dir"
+        action "[dry-run] Would check: sp-local-bridge, sp-local-bridge-mcp, sp-local-bridge-doctor, sp-local-bridge-print-config"
         return
     fi
 
-    if command -v sp-local-bridge &>/dev/null; then
-        local version
-        version=$(sp-local-bridge --version 2>/dev/null || echo "unknown")
-        info "✓ sp-local-bridge $version"
-    else
-        warn "sp-local-bridge not on PATH after install"
-        warn "You may need to add ~/.local/bin to your PATH"
+    local bin_dir
+    bin_dir=$(resolve_tool_bin_dir)
+    local commands=(sp-local-bridge sp-local-bridge-mcp sp-local-bridge-doctor sp-local-bridge-print-config)
+
+    # First check all expected executables exist in the bin dir
+    for cmd in "${commands[@]}"; do
+        if [[ -x "$bin_dir/$cmd" ]]; then
+            info "✓ $cmd → $bin_dir/$cmd"
+        else
+            error "$cmd not found at $bin_dir/$cmd after install"
+            INSTALL_OK=false
+        fi
+    done
+
+    # Then check if the bin dir is on PATH
+    if [[ ":$PATH:" != *":$bin_dir:"* ]]; then
+        echo
+        warn "Install directory is NOT on your PATH: $bin_dir"
+        warn "MCP hosts launched from a GUI may also not see these commands."
+        echo
+        echo "  Fix: add to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
+        echo "    export PATH=\"$bin_dir:\$PATH\""
+        echo
+        echo "  Or use absolute paths in host config (the default):"
+        echo "    sp-local-bridge-print-config claude-desktop"
+        echo
+        INSTALL_OK=false
     fi
 }
 
 print_next_steps() {
+    local bin_dir
+    bin_dir=$(resolve_tool_bin_dir)
+    local mcp_cmd="sp-local-bridge-mcp"
+    local doctor_cmd="sp-local-bridge-doctor"
+    local config_cmd="sp-local-bridge-print-config"
+
+    # Use absolute paths if not on PATH
+    if ! command -v sp-local-bridge-mcp &>/dev/null && [[ -x "$bin_dir/sp-local-bridge-mcp" ]]; then
+        mcp_cmd="$bin_dir/sp-local-bridge-mcp"
+        doctor_cmd="$bin_dir/sp-local-bridge-doctor"
+        config_cmd="$bin_dir/sp-local-bridge-print-config"
+    fi
+
     echo
     echo "Next steps:"
     echo "  1. Enable Local REST API in Super Productivity: Settings → Misc"
-    echo "  2. Run: sp-local-bridge-doctor"
-    echo "  3. For MCP host config: sp-local-bridge-print-config claude-desktop"
+    echo "  2. Run: $doctor_cmd"
+    echo "  3. For MCP host config: $config_cmd claude-desktop"
     echo
 }
 
@@ -148,6 +197,12 @@ main() {
     verify_install
 
     print_next_steps
+
+    if [[ "$INSTALL_OK" != "true" ]]; then
+        error "Install completed but commands are not accessible on PATH."
+        error "Fix PATH (see above) and re-run, or use absolute paths."
+        exit 1
+    fi
 }
 
 main "$@"
