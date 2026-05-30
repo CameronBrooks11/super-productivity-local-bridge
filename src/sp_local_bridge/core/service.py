@@ -16,14 +16,16 @@ _TASK_FIELD_TYPES: dict[str, tuple[type, ...]] = {
     "notes": (str,),
     "projectId": (str, type(None)),
     "tagIds": (list,),
-    "parentId": (str, type(None)),
     "plannedAt": (str, int, type(None)),
     "dueDay": (str, type(None)),
-    "dueWithTime": (str, type(None)),
+    "dueWithTime": (int, type(None)),
     "isDone": (bool,),
 }
 
-_TASK_WRITABLE_FIELDS = frozenset(_TASK_FIELD_TYPES.keys())
+# Fields only valid on task.create (not on update)
+_CREATE_ONLY_FIELDS = frozenset({"parentId"})
+
+_TASK_WRITABLE_FIELDS = frozenset(_TASK_FIELD_TYPES.keys()) | _CREATE_ONLY_FIELDS
 
 
 def _validate_id(payload: dict[str, Any]) -> str | None:
@@ -98,6 +100,16 @@ class BridgeService:
         validation_err = _validate_task_fields(payload)
         if validation_err:
             return validation_err
+        # parentId: must be non-empty string when present; rejects projectId/tagIds for subtasks
+        if "parentId" in payload:
+            parent_id = payload["parentId"]
+            if not isinstance(parent_id, str) or not parent_id.strip():
+                return BridgeResult.failure(errors.INVALID_INPUT, "Field 'parentId' must be a non-empty string")
+            if "projectId" in payload or "tagIds" in payload:
+                return BridgeResult.failure(
+                    errors.INVALID_INPUT,
+                    "Cannot set projectId or tagIds when parentId is specified (subtasks inherit from parent)",
+                )
         return await self._client.create_task(payload)
 
     async def _task_update(self, payload: dict[str, Any]) -> BridgeResult:
@@ -107,6 +119,9 @@ class BridgeService:
         update_data = {k: v for k, v in payload.items() if k != "id"}
         if not update_data:
             return BridgeResult.failure(errors.INVALID_INPUT, "No fields to update")
+        # parentId is not allowed on update (upstream rejects it)
+        if "parentId" in update_data:
+            return BridgeResult.failure(errors.INVALID_INPUT, "Field 'parentId' is not allowed on task.update")
         validation_err = _validate_task_fields(update_data)
         if validation_err:
             return validation_err

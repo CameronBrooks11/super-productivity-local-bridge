@@ -263,6 +263,96 @@ class TestValidation:
         assert result.error.code == errors.INVALID_INPUT
         assert "id" in result.error.message.lower()
 
+    @pytest.mark.asyncio
+    async def test_task_create_due_with_time_accepts_int(self, service: BridgeService):
+        """dueWithTime should accept an integer (Unix ms timestamp)."""
+        # This should pass validation (may fail at REST level, but validation is what we test)
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "dueWithTime": 1717000000000})
+        )
+        # Will fail at REST since no mock, but NOT with INVALID_INPUT
+        # We just need it to pass validation — use respx mock
+        assert result.error is None or result.error.code != errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_due_with_time_rejects_string(self, service: BridgeService):
+        """dueWithTime should reject strings (it's a Unix ms timestamp, not ISO string)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "dueWithTime": "2025-01-01"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "dueWithTime" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_parent_id_valid(self, service: BridgeService):
+        """parentId with a valid non-empty string should pass validation."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "Sub", "parentId": "parent-123"})
+        )
+        # Passes validation — may fail at REST level without mock
+        assert result.error is None or result.error.code != errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_parent_id_empty_string_rejected(self, service: BridgeService):
+        """parentId must be non-empty string when present."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "Sub", "parentId": ""})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "parentId" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_parent_id_null_rejected(self, service: BridgeService):
+        """parentId=None is not valid on create (just omit it)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "Sub", "parentId": None})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_create_parent_id_rejects_project_id(self, service: BridgeService):
+        """Subtasks cannot specify projectId (inherited from parent)."""
+        result = await service.execute(
+            BridgeRequest(
+                operation=Operation.TASK_CREATE,
+                payload={"title": "Sub", "parentId": "p1", "projectId": "proj1"},
+            )
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "projectId" in result.error.message or "parentId" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_task_create_parent_id_rejects_tag_ids(self, service: BridgeService):
+        """Subtasks cannot specify tagIds (inherited from parent)."""
+        result = await service.execute(
+            BridgeRequest(
+                operation=Operation.TASK_CREATE,
+                payload={"title": "Sub", "parentId": "p1", "tagIds": ["t1"]},
+            )
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_task_update_rejects_parent_id(self, service: BridgeService):
+        """parentId is not allowed on task.update (upstream rejects it)."""
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_UPDATE, payload={"id": "t1", "parentId": "p1"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "parentId" in result.error.message
+
 
 class TestErrorPropagation:
     @respx.mock
