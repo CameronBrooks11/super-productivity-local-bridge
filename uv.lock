@@ -1008,9 +1008,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "httpx", specifier = ">=0.28" },
-    { name = "mcp", specifier = ">=1.9" },
-    { name = "pydantic", specifier = ">=2.12" },
+    { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "mcp", specifier = ">=1.9,<2" },
+    { name = "pydantic", specifier = ">=2.12,<3" },
 ]
 
 [package.metadata.requires-dev]

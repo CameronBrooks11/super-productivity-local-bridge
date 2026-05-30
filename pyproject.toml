@@ -19,9 +19,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "httpx>=0.28",
-    "mcp>=1.9",
-    "pydantic>=2.12",
+    "httpx>=0.28,<1",
+    "mcp>=1.9,<2",
+    "pydantic>=2.12,<3",
 ]
 
 [project.scripts]
