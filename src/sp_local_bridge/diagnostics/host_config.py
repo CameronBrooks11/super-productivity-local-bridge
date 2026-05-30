@@ -23,6 +23,22 @@ _HOSTS: dict[str, dict[str, object]] = {
             "windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
         },
     },
+    "vscode-copilot": {
+        "config_template": {
+            "servers": {
+                "superProductivity": {
+                    "type": "stdio",
+                    "command": "sp-local-bridge-mcp",
+                    "args": [],
+                }
+            }
+        },
+        "paths": {
+            "linux": ".vscode/mcp.json (workspace) or User settings.json",
+            "macos": ".vscode/mcp.json (workspace) or User settings.json",
+            "windows": ".vscode/mcp.json (workspace) or User settings.json",
+        },
+    },
 }
 
 
@@ -75,8 +91,9 @@ def _build_config(host: str, *, absolute: bool = True) -> dict:
 
     if absolute:
         mcp_cmd = _resolve_mcp_command()
-        # Replace the command in all server entries
-        for _name, server in config.get("mcpServers", {}).items():
+        # Replace the command in all server entries (mcpServers or servers)
+        servers = config.get("mcpServers", config.get("servers", {}))
+        for _name, server in servers.items():
             if server.get("command") == "sp-local-bridge-mcp":
                 server["command"] = mcp_cmd
 
@@ -95,7 +112,9 @@ def _print_config(host: str, *, absolute: bool = True) -> int:
     paths = entry["paths"]
     assert isinstance(paths, dict)
 
-    mcp_cmd = config.get("mcpServers", {}).get("super-productivity", {}).get("command", "sp-local-bridge-mcp")
+    # Find the command from whichever server structure this host uses
+    servers = config.get("mcpServers", config.get("servers", {}))
+    mcp_cmd = next(iter(servers.values()), {}).get("command", "sp-local-bridge-mcp")
     if mcp_cmd == "sp-local-bridge-mcp" and absolute:
         print("Warning: could not resolve absolute path for sp-local-bridge-mcp.", file=sys.stderr)
         print("The host may fail to launch if ~/.local/bin is not on its PATH.", file=sys.stderr)

@@ -35,6 +35,17 @@ class TestBuildConfig:
         # Should be either absolute or fallback bare name
         assert "sp-local-bridge-mcp" in cmd
 
+    def test_vscode_copilot_bare_mode(self):
+        config = _build_config("vscode-copilot", absolute=False)
+        cmd = config["servers"]["superProductivity"]["command"]
+        assert cmd == "sp-local-bridge-mcp"
+        assert config["servers"]["superProductivity"]["type"] == "stdio"
+
+    def test_vscode_copilot_absolute_mode(self):
+        config = _build_config("vscode-copilot", absolute=True)
+        cmd = config["servers"]["superProductivity"]["command"]
+        assert "sp-local-bridge-mcp" in cmd
+
 
 class TestPrintConfig:
     def test_claude_desktop_returns_valid_json(self, capsys: pytest.CaptureFixture[str]):
