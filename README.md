@@ -1,28 +1,24 @@
 # Super Productivity Local Bridge
 
-Local automation bridge for [Super Productivity](https://super-productivity.com/) — control tasks, projects, and tags from external tools via MCP, CLI, or any host adapter.
+[![CI](https://github.com/CameronBrooks11/super-productivity-local-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/CameronBrooks11/super-productivity-local-bridge/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-## Architecture
+Control [Super Productivity](https://super-productivity.com/) tasks, projects, and tags from MCP hosts, CLI, and local automation tools — all through the desktop app's Local REST API.
 
-```
-MCP client / CLI / agent host
-        ↓
-    host adapter (thin)
-        ↓
-    core operations
-        ↓
-  SP Local REST API (http://127.0.0.1:3876)
-        ↓
-  Super Productivity desktop app
-```
+## Why
 
-The bridge uses the Super Productivity Local REST API as the primary app-control path. MCP is one thin adapter. The core operation layer is host-agnostic.
+Super Productivity is a great task manager. This bridge lets AI coding agents and automation scripts interact with it programmatically — creating tasks, tracking work, and managing projects without leaving your workflow.
 
-## Prerequisites
+Everything runs locally on `127.0.0.1:3876`. No cloud. No accounts. No data leaves your machine.
 
-- [Super Productivity](https://super-productivity.com/) desktop app with Local REST API enabled (Settings → Misc)
-- Python 3.11+
-- [uv](https://docs.astral.sh/uv/)
+## Features
+
+- **13 operations** — list/get/create/update/complete/start/stop/archive/restore tasks, list projects, list tags, health check
+- **MCP adapter** — works with VS Code Copilot, Claude Desktop, Codex CLI, and any MCP-compatible host
+- **CLI** — direct command-line access to all operations
+- **Host config generator** — prints ready-to-paste config with absolute paths for each supported host
+- **Doctor command** — diagnoses connectivity and configuration issues
 
 ## Install
 
@@ -32,74 +28,49 @@ cd super-productivity-local-bridge
 scripts/install.sh
 ```
 
-The install script will:
-1. Check prerequisites (Python 3.11+, uv)
-2. Install the bridge as a tool (`uv tool install`)
-3. Verify all commands are accessible
-4. Print next steps
+Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). Use `--dry-run` to preview.
 
-Use `scripts/install.sh --dry-run` to preview without making changes.
-
-### Configure MCP Host
+## Configure an MCP Host
 
 ```sh
-sp-local-bridge-print-config vscode-copilot   # VS Code Copilot / Codex in VS Code
+sp-local-bridge-print-config vscode-copilot   # VS Code Copilot
 sp-local-bridge-print-config claude-desktop    # Claude Desktop
-sp-local-bridge-print-config codex             # Codex CLI (standalone)
+sp-local-bridge-print-config codex             # Codex CLI
 ```
 
-This prints a config snippet with the **absolute path** to the MCP server command. Add it to the appropriate config file (path shown in output), then restart the host.
+Add the printed snippet to the config file shown in the output, then restart the host.
 
-Host guides:
-- [VS Code Copilot](docs/hosts/vscode-copilot.md)
-- [Claude Desktop](docs/hosts/claude-desktop.md)
-- [Codex CLI](docs/hosts/codex.md)
+See the [host setup guides](https://cameronbrooks11.github.io/super-productivity-local-bridge/hosts/) for detailed instructions.
 
-### Verify
+## Verify
 
 ```sh
 sp-local-bridge-doctor
 ```
 
-### Uninstall
+## Safety
 
-```sh
-scripts/uninstall.sh
-```
+This bridge has **write access** to your Super Productivity data (create, update, complete, archive tasks). It talks only to localhost. `task.delete` is intentionally excluded. Back up your SP data before heavy automation use.
 
-## CLI Usage
+See [Security](https://cameronbrooks11.github.io/super-productivity-local-bridge/security) for the full risk profile.
 
-```sh
-sp-local-bridge health              # Check SP connectivity
-sp-local-bridge tasks list          # List all tasks
-sp-local-bridge tasks get <id>      # Get a task by ID
-sp-local-bridge tasks add "Title"   # Create a new task
-sp-local-bridge projects list       # List all projects
-sp-local-bridge tags list           # List all tags
-```
+## Documentation
+
+Full docs: [cameronbrooks11.github.io/super-productivity-local-bridge](https://cameronbrooks11.github.io/super-productivity-local-bridge/)
+
+- [Getting Started](https://cameronbrooks11.github.io/super-productivity-local-bridge/getting-started)
+- [Operations Reference](https://cameronbrooks11.github.io/super-productivity-local-bridge/operations)
+- [Architecture](https://cameronbrooks11.github.io/super-productivity-local-bridge/architecture)
+- [Troubleshooting](https://cameronbrooks11.github.io/super-productivity-local-bridge/troubleshooting)
 
 ## Development
 
 ```sh
-uv sync                         # Install all deps (creates .venv)
-uv run ruff format .            # Format code
-uv run ruff check .             # Lint
-uv run pyright                  # Type check
-uv run pytest                   # Run tests
-uv run pytest --cov             # Tests with coverage
-make check                      # All checks (format, lint, types, tests, build)
+uv sync                     # Install deps
+make check                  # Format, lint, typecheck, test, build
+uv run pytest --cov         # Tests with coverage
+uv run pre-commit install   # Git hooks
 ```
-
-### Pre-commit hooks
-
-```sh
-uv run pre-commit install       # Install git hooks
-uv run pre-commit run --all-files  # Run manually
-```
-
-## Project Status
-
-**0.1.0** — core operations, REST client, CLI, MCP adapter, doctor, and host config generator functional. Requires SP desktop app with Local REST API enabled.
 
 ## License
 
