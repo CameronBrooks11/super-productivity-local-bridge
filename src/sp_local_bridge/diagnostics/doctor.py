@@ -100,6 +100,40 @@ async def _run_checks() -> list[_Check]:
             )
         )
 
+    # 7. Host configuration status
+    from sp_local_bridge.diagnostics.configure import _HOSTS, check_host_configured
+
+    configured_hosts: list[str] = []
+    unconfigured_hosts: list[str] = []
+    for host in sorted(_HOSTS.keys()):
+        if check_host_configured(host):
+            configured_hosts.append(host)
+        else:
+            unconfigured_hosts.append(host)
+
+    if configured_hosts:
+        hosts_str = ", ".join(configured_hosts)
+        checks.append(_Check("host_config", True, f"Host config: {hosts_str}"))
+    else:
+        checks.append(
+            _Check(
+                "host_config",
+                False,
+                "No MCP hosts configured",
+                "Run: sp-local-bridge-configure <host>",
+            )
+        )
+
+    if unconfigured_hosts:
+        uncfg_str = ", ".join(unconfigured_hosts)
+        checks.append(
+            _Check(
+                "host_config_available",
+                True,
+                f"Available to configure: {uncfg_str}",
+            )
+        )
+
     return checks
 
 
