@@ -195,6 +195,22 @@ class TestUninstallScript:
         assert result.returncode == 0
         assert "dry-run" in result.stdout.lower()
 
+    def test_dry_run_config_cleanup_before_package_removal(self):
+        """Uninstall dry-run must attempt host config removal before package removal."""
+        result = subprocess.run(
+            [UNINSTALL_SCRIPT, "--dry-run"],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        output = result.stdout
+        # Config cleanup section must appear before package removal section
+        config_pos = output.find("Removing host configs")
+        package_pos = output.find("Removing package")
+        assert config_pos >= 0, "Expected 'Removing host configs' in output"
+        assert package_pos >= 0, "Expected 'Removing package' in output"
+        assert config_pos < package_pos, "Config cleanup must happen before package removal"
+
     def test_help_flag(self):
         result = subprocess.run(
             [UNINSTALL_SCRIPT, "--help"],

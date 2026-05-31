@@ -82,7 +82,9 @@ print_reminders() {
     echo
     echo "Reminders:"
     echo "  • If any host configs could not be removed automatically,"
-    echo "    manually remove the superProductivity entry from your host config file."
+    echo "    remove the entry from your host config file manually:"
+    echo "      Claude Desktop: remove 'super-productivity' from mcpServers"
+    echo "      VS Code / Codex: remove 'superProductivity' from servers / mcp_servers"
     echo "  • The Super Productivity desktop app and its data are not affected."
     echo
 }

@@ -158,3 +158,33 @@ class TestDoctorHostConfigChecks:
         assert host_check is not None
         assert host_check.passed is True  # advisory, not a failure
         assert "sp-local-bridge-configure" in host_check.detail
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_host_config_parse_error_is_failed_check(self, tmp_path, monkeypatch):
+        """Malformed host config must produce a failed diagnostic check."""
+        from sp_local_bridge.diagnostics import configure
+
+        respx.get(f"{BASE_URL}/health").mock(side_effect=httpx.ConnectError("refused"))
+        respx.get(f"{BASE_URL}/status").mock(side_effect=httpx.ConnectError("refused"))
+
+        # Claude Desktop config is malformed JSON
+        broken_path = tmp_path / "claude" / "config.json"
+        broken_path.parent.mkdir(parents=True)
+        broken_path.write_text("{invalid json!!!")
+
+        def _mock_resolve(host: str) -> Path:
+            paths = {
+                "claude-desktop": broken_path,
+                "vscode-copilot": tmp_path / "vscode" / "mcp.json",
+                "codex": tmp_path / "codex" / "config.toml",
+            }
+            return paths[host]
+
+        monkeypatch.setattr(configure, "_resolve_config_path", _mock_resolve)
+
+        checks = await _run_checks()
+        parse_check = next((c for c in checks if c.name == "host_config_parse_error"), None)
+        assert parse_check is not None
+        assert parse_check.passed is False
+        assert "claude-desktop" in parse_check.message

@@ -120,7 +120,7 @@ Print a final summary:
 ```
 Setup complete
 ──────────────
-Bridge:     installed (sp-local-bridge v0.1.0)
+Bridge:     installed (sp-local-bridge v0.1.1)
 Host:       <host> configured
 Config:     <path-to-config-file>
 Skills:     ~/.agents/skills/sp-local-bridge-setup → linked

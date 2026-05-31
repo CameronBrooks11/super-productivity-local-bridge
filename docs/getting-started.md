@@ -25,7 +25,7 @@ Use `--dry-run` to preview without making changes. Use `--verbose` to see detail
 If a [release](https://github.com/CameronBrooks11/super-productivity-local-bridge/releases) is available, you can install the wheel directly:
 
 ```sh
-uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.0/sp_local_bridge-0.1.0-py3-none-any.whl
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.1/sp_local_bridge-0.1.1-py3-none-any.whl
 ```
 
 Note: release installs provide CLI tools but not the setup skill or install/uninstall scripts. Clone the repo if you want the full experience.

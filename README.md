@@ -35,7 +35,7 @@ Use `--dry-run` to preview.
 Alternatively, install from a [GitHub Release](https://github.com/CameronBrooks11/super-productivity-local-bridge/releases) wheel:
 
 ```sh
-uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.0/sp_local_bridge-0.1.0-py3-none-any.whl
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.1/sp_local_bridge-0.1.1-py3-none-any.whl
 ```
 
 ## Configure an MCP Host
