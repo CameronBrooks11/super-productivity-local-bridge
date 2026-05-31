@@ -15,7 +15,7 @@ Run these checks silently and collect the results:
 
 1. **Python version** — run `python3 --version`. Requires 3.11+.
 2. **uv installed** — run `uv --version`. Required for installation.
-3. **SP app running** — run `curl -sf http://127.0.0.1:3876/api/health`. If it
+3. **SP app running** — run `curl -sf http://127.0.0.1:3876/health`. If it
    fails, the Super Productivity desktop app is not running or Local REST API is
    not enabled.
 4. **Already installed** — run `sp-local-bridge-mcp --help 2>/dev/null`. If it
@@ -23,9 +23,8 @@ Run these checks silently and collect the results:
 5. **Detect platform** — check `uname -s` (Linux/Darwin) and `uname -m`.
 6. **Detect agent** — determine which agent you are running as:
    - If `$VSCODE_PID` or `$VSCODE_IPC_HOOK_CLI` is set → vscode-copilot
-   - If `claude --version` succeeds → claude-desktop (Claude Code)
    - If `codex --version` succeeds → codex
-   - Otherwise → unknown (will ask user)
+   - Otherwise → unknown (will ask user which host to configure)
 7. **Existing config** — if installed, run `sp-local-bridge-configure --dry-run <detected-host>`
    to check if config is already written.
 8. **Skills symlink** — check if `~/.agents/skills/sp-local-bridge-setup` exists.

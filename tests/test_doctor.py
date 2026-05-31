@@ -156,5 +156,5 @@ class TestDoctorHostConfigChecks:
         checks = await _run_checks()
         host_check = next((c for c in checks if c.name == "host_config"), None)
         assert host_check is not None
-        assert host_check.passed is False
+        assert host_check.passed is True  # advisory, not a failure
         assert "sp-local-bridge-configure" in host_check.detail

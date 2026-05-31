@@ -135,13 +135,13 @@ verify_install() {
         local bin_dir
         bin_dir=$(resolve_tool_bin_dir)
         action "[dry-run] Would verify commands in: $bin_dir"
-        action "[dry-run] Would check: sp-local-bridge, sp-local-bridge-mcp, sp-local-bridge-doctor, sp-local-bridge-print-config"
+        action "[dry-run] Would check: sp-local-bridge, sp-local-bridge-mcp, sp-local-bridge-doctor, sp-local-bridge-print-config, sp-local-bridge-configure"
         return
     fi
 
     local bin_dir
     bin_dir=$(resolve_tool_bin_dir)
-    local commands=(sp-local-bridge sp-local-bridge-mcp sp-local-bridge-doctor sp-local-bridge-print-config)
+    local commands=(sp-local-bridge sp-local-bridge-mcp sp-local-bridge-doctor sp-local-bridge-print-config sp-local-bridge-configure)
 
     # First check all expected executables exist in the bin dir
     for cmd in "${commands[@]}"; do

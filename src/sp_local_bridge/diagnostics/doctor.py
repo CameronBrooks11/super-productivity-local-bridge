@@ -118,8 +118,8 @@ async def _run_checks() -> list[_Check]:
         checks.append(
             _Check(
                 "host_config",
-                False,
-                "No MCP hosts configured",
+                True,
+                "No MCP hosts configured (optional)",
                 "Run: sp-local-bridge-configure <host>",
             )
         )

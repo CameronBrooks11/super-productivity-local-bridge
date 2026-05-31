@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 import os
 import platform
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 from sp_local_bridge.diagnostics.host_config import _HOSTS, _build_config, _format_toml_config
@@ -81,16 +83,71 @@ def _read_toml(path: Path) -> dict:
     return {}
 
 
+def _backup(path: Path) -> Path | None:
+    """Create a .bak copy of the file if it exists. Returns backup path or None."""
+    if path.exists():
+        backup_path = path.with_suffix(path.suffix + ".bak")
+        shutil.copy2(path, backup_path)
+        return backup_path
+    return None
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write content atomically via temp file + rename."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, suffix=".tmp")
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        fd = -1
+        os.replace(tmp, path)
+    except BaseException:
+        if fd >= 0:
+            os.close(fd)
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+
 def _write_json(path: Path, data: dict) -> None:
-    """Write JSON config with pretty formatting."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    """Write JSON config with pretty formatting (atomic + backup)."""
+    _backup(path)
+    _atomic_write(path, json.dumps(data, indent=2) + "\n")
 
 
-def _write_toml(path: Path, data: dict) -> None:
-    """Write TOML config (simple flat structure for MCP servers)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(_format_toml_config(data) + "\n", encoding="utf-8")
+def _write_toml_full(path: Path, original_lines: list[str], server_key: str, merged_servers: dict) -> None:
+    """Write TOML config preserving all content outside our server table.
+
+    Strategy: read original file, find/replace the mcp_servers table block,
+    preserve everything else verbatim.
+    """
+    _backup(path)
+    new_block = _format_toml_config({server_key: merged_servers})
+
+    # Find existing table boundaries
+    table_start = None
+    table_end = None
+    for i, line in enumerate(original_lines):
+        stripped = line.strip()
+        if stripped.startswith(f"[{server_key}") and not stripped.startswith(f"[[{server_key}"):
+            table_start = i
+        elif table_start is not None and stripped.startswith("[") and not stripped.startswith(f"[{server_key}"):
+            table_end = i
+            break
+
+    if table_start is not None:
+        # Replace existing block
+        if table_end is None:
+            table_end = len(original_lines)
+        result_lines = [*original_lines[:table_start], new_block + "\n", *original_lines[table_end:]]
+    else:
+        # Append new block at end
+        result_lines = original_lines[:]
+        if result_lines and result_lines[-1].strip():
+            result_lines.append("\n")
+        result_lines.append(new_block + "\n")
+
+    _atomic_write(path, "".join(result_lines))
 
 
 def configure_host(host: str, *, dry_run: bool = False, remove: bool = False) -> int:
@@ -117,31 +174,42 @@ def _add_entry(host: str, config_path: Path, fmt: str, server_key: str, entry_na
     servers_block = our_config.get(server_key, {})
     our_entry = servers_block.get(entry_name, {})
 
-    if fmt == "json":
-        existing = _read_json(config_path)
-        if server_key not in existing:
-            existing[server_key] = {}
-        existing[server_key][entry_name] = our_entry
+    try:
+        if fmt == "json":
+            existing = _read_json(config_path)
+            if server_key not in existing:
+                existing[server_key] = {}
+            existing[server_key][entry_name] = our_entry
 
-        if dry_run:
-            print(f"Would write to: {config_path}")
-            print(json.dumps(existing, indent=2))
-            return 0
+            if dry_run:
+                print(f"Would write to: {config_path}")
+                print(json.dumps(existing, indent=2))
+                return 0
 
-        _write_json(config_path, existing)
-    else:
-        # TOML — read existing then merge our mcp_servers entry
-        existing = _read_toml(config_path)
-        if server_key not in existing:
-            existing[server_key] = {}
-        existing[server_key][entry_name] = our_entry
+            _write_json(config_path, existing)
+        else:
+            # TOML — preserve all existing content, only merge our server entry
+            existing = _read_toml(config_path)
+            if server_key not in existing:
+                existing[server_key] = {}
+            existing[server_key][entry_name] = our_entry
 
-        if dry_run:
-            print(f"Would write to: {config_path}")
-            print(_format_toml_config(existing))
-            return 0
+            # Read original lines to preserve non-mcp_servers content
+            original_lines: list[str] = []
+            if config_path.exists():
+                original_lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
 
-        _write_toml(config_path, existing)
+            if dry_run:
+                print(f"Would write to: {config_path}")
+                print(_format_toml_config(existing))
+                return 0
+
+            _write_toml_full(config_path, original_lines, server_key, existing[server_key])
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"Error: cannot parse {config_path}", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        print("  Manual repair needed. Then re-run this command.", file=sys.stderr)
+        return 1
 
     print(f"✓ Configured {host}")
     print(f"  Written to: {config_path}")
@@ -156,7 +224,13 @@ def _remove_entry(config_path: Path, fmt: str, server_key: str, entry_name: str,
         print("Nothing to remove.")
         return 0
 
-    existing = _read_json(config_path) if fmt == "json" else _read_toml(config_path)
+    try:
+        existing = _read_json(config_path) if fmt == "json" else _read_toml(config_path)
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"Error: cannot parse {config_path}", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        print("  Manual repair needed. Then re-run this command.", file=sys.stderr)
+        return 1
 
     servers = existing.get(server_key, {})
     if entry_name not in servers:
@@ -179,7 +253,13 @@ def _remove_entry(config_path: Path, fmt: str, server_key: str, entry_name: str,
     if fmt == "json":
         _write_json(config_path, existing)
     else:
-        _write_toml(config_path, existing)
+        # For remove, rewrite full file preserving other content
+        original_lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
+        if servers:
+            _write_toml_full(config_path, original_lines, server_key, servers)
+        else:
+            # Remove entire server_key table block
+            _write_toml_full(config_path, original_lines, server_key, {})
 
     print(f"✓ Removed sp-local-bridge entry from {config_path}")
     return 0
