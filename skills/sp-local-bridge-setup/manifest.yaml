@@ -1,7 +1,7 @@
 schema_version: 1
 name: sp-local-bridge-setup
 description: Install and configure Super Productivity Local Bridge for MCP hosts
-version: "0.1.1"
+version: "0.2.0"
 scope: cross-product
 requires-tools: []
 requires-products: []

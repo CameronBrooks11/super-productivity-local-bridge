@@ -25,7 +25,7 @@ Use `--dry-run` to preview without making changes. Use `--verbose` to see detail
 If a [release](https://github.com/CameronBrooks11/super-productivity-local-bridge/releases) is available, you can install the wheel directly:
 
 ```sh
-uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.1/sp_local_bridge-0.1.1-py3-none-any.whl
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.2.0/sp_local_bridge-0.2.0-py3-none-any.whl
 ```
 
 Note: release installs provide CLI tools but not the setup skill or install/uninstall scripts. Clone the repo if you want the full experience.
@@ -70,12 +70,20 @@ The bridge also provides a direct CLI:
 
 ```sh
 sp-local-bridge health              # Check SP connectivity
+sp-local-bridge status              # Get SP app status
 sp-local-bridge tasks list          # List all tasks
+sp-local-bridge tasks list --query "budget" --include-done
 sp-local-bridge tasks get <id>      # Get a task by ID
 sp-local-bridge tasks add "Title"   # Create a new task
+sp-local-bridge tasks current       # Get currently tracked task
+sp-local-bridge tasks set-current <id>   # Set current task
+sp-local-bridge tasks clear-current      # Clear current task
 sp-local-bridge projects list       # List all projects
+sp-local-bridge projects list --query "work"
 sp-local-bridge tags list           # List all tags
 ```
+
+See [Operations Reference](./operations.md) for the full list of filters and payload fields.
 
 ## Uninstall
 

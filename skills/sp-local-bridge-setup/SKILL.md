@@ -120,16 +120,17 @@ Print a final summary:
 ```
 Setup complete
 ──────────────
-Bridge:     installed (sp-local-bridge v0.1.1)
+Bridge:     installed (sp-local-bridge v0.2.0)
 Host:       <host> configured
 Config:     <path-to-config-file>
 Skills:     ~/.agents/skills/sp-local-bridge-setup → linked
 SP status:  ✓ connected / ⚠ not running (configure host when ready)
 
-Available tools (13):
-  task.list, task.get, task.create, task.update, task.complete,
-  task.start, task.stop, task.archive, task.restore,
-  project.list, tag.list, bridge.health
+Available tools (16):
+  task.list, task.get, task.create, task.update, task.complete, task.uncomplete,
+  task.start, task.stop_current, task.get_current, task.set_current,
+  task.archive, task.restore,
+  project.list, tag.list, status.get, bridge.health
 
 Next: try asking me to "list my tasks" or "create a task called Test".
 ```

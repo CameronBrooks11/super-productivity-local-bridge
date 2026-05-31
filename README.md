@@ -14,9 +14,9 @@ The bridge talks only to your local Super Productivity API on `127.0.0.1:3876`. 
 
 ## Features
 
-- **13 operations** — list/get/create/update/complete/start/stop/archive/restore tasks, list projects, list tags, health check
+- **16 operations** — list/get/create/update/complete/uncomplete/start/stop/archive/restore tasks, current task get/set, list projects, list tags, status, health check, plus filters and time fields
 - **MCP adapter** — live-validated with VS Code Copilot; includes setup guides and config generation for Claude Desktop and Codex CLI
-- **CLI** — direct command-line access to all operations
+- **CLI** — command-line access to common operations (health, status, list/get/create tasks, current task, projects, tags)
 - **Host config generator** — prints ready-to-paste config with absolute paths for each supported host
 - **Doctor command** — diagnoses connectivity and configuration issues
 
@@ -35,7 +35,7 @@ Use `--dry-run` to preview.
 Alternatively, install from a [GitHub Release](https://github.com/CameronBrooks11/super-productivity-local-bridge/releases) wheel:
 
 ```sh
-uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.1.1/sp_local_bridge-0.1.1-py3-none-any.whl
+uv tool install https://github.com/CameronBrooks11/super-productivity-local-bridge/releases/download/v0.2.0/sp_local_bridge-0.2.0-py3-none-any.whl
 ```
 
 ## Configure an MCP Host

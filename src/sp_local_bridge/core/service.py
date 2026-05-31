@@ -20,12 +20,25 @@ _TASK_FIELD_TYPES: dict[str, tuple[type, ...]] = {
     "dueDay": (str, type(None)),
     "dueWithTime": (int, type(None)),
     "isDone": (bool,),
+    "timeEstimate": (int,),
+    "timeSpent": (int,),
 }
 
 # Fields only valid on task.create (not on update)
 _CREATE_ONLY_FIELDS = frozenset({"parentId"})
 
 _TASK_WRITABLE_FIELDS = frozenset(_TASK_FIELD_TYPES.keys()) | _CREATE_ONLY_FIELDS
+
+# Valid task list filter fields
+_TASK_LIST_FILTERS: dict[str, tuple[type, ...]] = {
+    "query": (str,),
+    "projectId": (str,),
+    "tagId": (str,),
+    "includeDone": (bool,),
+    "source": (str,),
+}
+
+_VALID_SOURCE_VALUES = frozenset({"active", "archived", "all"})
 
 
 def _validate_id(payload: dict[str, Any]) -> str | None:
@@ -70,7 +83,61 @@ def _validate_task_fields(payload: dict[str, Any], *, exclude: frozenset[str] = 
     if isinstance(tag_ids, list) and not all(isinstance(item, str) for item in tag_ids):
         return BridgeResult.failure(errors.INVALID_INPUT, "tagIds must contain only strings")
 
+    # Validate non-negative for time fields
+    for time_field in ("timeEstimate", "timeSpent"):
+        val = payload.get(time_field)
+        if isinstance(val, int) and val < 0:
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Field '{time_field}' must be non-negative (milliseconds), got {val}",
+            )
+
     return None
+
+
+def _validate_task_list_filters(payload: dict[str, Any]) -> tuple[BridgeResult | None, dict[str, str]]:
+    """Validate task list filter payload. Returns (error, params_dict)."""
+    unknown = set(payload.keys()) - set(_TASK_LIST_FILTERS.keys())
+    if unknown:
+        return (
+            BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Unknown filter fields: {', '.join(sorted(unknown))}",
+            ),
+            {},
+        )
+
+    for field, value in payload.items():
+        expected = _TASK_LIST_FILTERS[field]
+        if not isinstance(value, expected):
+            type_names = " | ".join(t.__name__ for t in expected)
+            return (
+                BridgeResult.failure(
+                    errors.INVALID_INPUT,
+                    f"Filter '{field}' must be {type_names}, got {type(value).__name__}",
+                ),
+                {},
+            )
+
+    source = payload.get("source")
+    if source is not None and source not in _VALID_SOURCE_VALUES:
+        return (
+            BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Filter 'source' must be one of: {', '.join(sorted(_VALID_SOURCE_VALUES))}",
+            ),
+            {},
+        )
+
+    # Build query params dict (string values for httpx)
+    params: dict[str, str] = {}
+    for field, value in payload.items():
+        if isinstance(value, bool):
+            params[field] = "true" if value else "false"
+        else:
+            params[field] = str(value)
+
+    return None, params
 
 
 def _validate_no_payload(payload: dict[str, Any]) -> BridgeResult | None:
@@ -111,10 +178,10 @@ class BridgeService:
         return await handler(self, request.payload)
 
     async def _task_list(self, payload: dict[str, Any]) -> BridgeResult:
-        err = _validate_no_payload(payload)
+        err, params = _validate_task_list_filters(payload)
         if err:
             return err
-        return await self._client.list_tasks()
+        return await self._client.list_tasks(params or None)
 
     async def _task_get(self, payload: dict[str, Any]) -> BridgeResult:
         err = _validate_id_only(payload)
@@ -213,16 +280,60 @@ class BridgeService:
         return await self._client.restore_task(task_id)
 
     async def _project_list(self, payload: dict[str, Any]) -> BridgeResult:
-        err = _validate_no_payload(payload)
-        if err:
-            return err
-        return await self._client.list_projects()
+        unknown = set(payload.keys()) - {"query"}
+        if unknown:
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Unknown filter fields: {', '.join(sorted(unknown))}",
+            )
+        if "query" in payload and not isinstance(payload["query"], str):
+            return BridgeResult.failure(errors.INVALID_INPUT, "Filter 'query' must be str")
+        params = {"query": payload["query"]} if "query" in payload else None
+        return await self._client.list_projects(params)
 
     async def _tag_list(self, payload: dict[str, Any]) -> BridgeResult:
+        unknown = set(payload.keys()) - {"query"}
+        if unknown:
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"Unknown filter fields: {', '.join(sorted(unknown))}",
+            )
+        if "query" in payload and not isinstance(payload["query"], str):
+            return BridgeResult.failure(errors.INVALID_INPUT, "Filter 'query' must be str")
+        params = {"query": payload["query"]} if "query" in payload else None
+        return await self._client.list_tags(params)
+
+    async def _task_get_current(self, payload: dict[str, Any]) -> BridgeResult:
         err = _validate_no_payload(payload)
         if err:
             return err
-        return await self._client.list_tags()
+        return await self._client.get_current_task()
+
+    async def _task_set_current(self, payload: dict[str, Any]) -> BridgeResult:
+        if "taskId" not in payload:
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                "Field 'taskId' is required (string to set, null to clear)",
+            )
+        extra = set(payload.keys()) - {"taskId"}
+        if extra:
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                f"This operation only accepts 'taskId', got extra: {', '.join(sorted(extra))}",
+            )
+        task_id = payload["taskId"]
+        if task_id is not None and (not isinstance(task_id, str) or not task_id.strip()):
+            return BridgeResult.failure(
+                errors.INVALID_INPUT,
+                "Field 'taskId' must be a non-empty string or null (to clear)",
+            )
+        return await self._client.set_current_task(task_id)
+
+    async def _status_get(self, payload: dict[str, Any]) -> BridgeResult:
+        err = _validate_no_payload(payload)
+        if err:
+            return err
+        return await self._client.status()
 
     async def _bridge_health(self, payload: dict[str, Any]) -> BridgeResult:
         err = _validate_no_payload(payload)
@@ -253,7 +364,10 @@ class BridgeService:
         Operation.TASK_STOP_CURRENT: _task_stop_current,
         Operation.TASK_ARCHIVE: _task_archive,
         Operation.TASK_RESTORE: _task_restore,
+        Operation.TASK_GET_CURRENT: _task_get_current,
+        Operation.TASK_SET_CURRENT: _task_set_current,
         Operation.PROJECT_LIST: _project_list,
         Operation.TAG_LIST: _tag_list,
+        Operation.STATUS_GET: _status_get,
         Operation.BRIDGE_HEALTH: _bridge_health,
     }

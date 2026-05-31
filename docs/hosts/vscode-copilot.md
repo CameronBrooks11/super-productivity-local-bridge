@@ -57,7 +57,7 @@ If tools don't appear, run `MCP: Reset Cached Tools` from the Command Palette or
 sp-local-bridge-doctor
 ```
 
-Or ask Copilot Chat to check Super Productivity health — it will invoke the `bridge_health` tool.
+Or ask Copilot Chat to check Super Productivity health — it will invoke the `health` tool.
 
 ## Troubleshooting
 

@@ -42,11 +42,14 @@ class TestMCPProtocol:
             tools_result = await session.list_tools()
             tool_names = {t.name for t in tools_result.tools}
 
-            assert len(tools_result.tools) == 13
+            assert len(tools_result.tools) == 16
             assert "health" in tool_names
+            assert "get_status" in tool_names
             assert "list_tasks" in tool_names
             assert "create_task" in tool_names
             assert "update_task" in tool_names
+            assert "get_current_task" in tool_names
+            assert "set_current_task" in tool_names
             assert "list_projects" in tool_names
             assert "list_tags" in tool_names
 
@@ -227,8 +230,8 @@ class TestMCPPayloadValidation:
     """Unit tests that verify payload validation through the service layer."""
 
     @pytest.mark.asyncio
-    async def test_list_tasks_rejects_extra_payload(self):
-        """list_tasks should reject unexpected fields."""
+    async def test_list_tasks_rejects_unknown_filter(self):
+        """list_tasks should reject unknown filter fields."""
         from sp_local_bridge.adapters.mcp_server import _TOOL_MAP
 
         service = BridgeService(SPRestClient(base_url=BASE_URL))
@@ -239,7 +242,7 @@ class TestMCPPayloadValidation:
         assert result.ok is False
         assert result.error is not None
         assert result.error.code == "INVALID_INPUT"
-        assert "no payload" in result.error.message.lower()
+        assert "filter" in result.error.message.lower()
 
     @pytest.mark.asyncio
     async def test_get_task_rejects_extra_fields(self):

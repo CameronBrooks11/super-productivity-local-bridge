@@ -20,13 +20,15 @@ Verified:
 **SP Version:** Super Productivity desktop app with Local REST API enabled
 **Bridge Version:** 0.1.1
 
+> Note: This section documents v0.1.1 validation (13 tools). The 3 tools added in v0.2.0 (`get_status`, `get_current_task`, `set_current_task`) have not yet been live-validated.
+
 ### Tools Validated
 
 All 13 MCP tools were invoked successfully against a live SP instance with real user data:
 
 | Tool | Result |
 |------|--------|
-| `bridge_health` | ✓ Connected, status returned |
+| `health` | ✓ Connected, status returned |
 | `list_tasks` | ✓ Returned 59 active tasks |
 | `get_task` | ✓ Returned full task details |
 | `create_task` | ✓ Task created with title, project, tags |

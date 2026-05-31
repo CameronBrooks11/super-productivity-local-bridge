@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-05-31
+
+### Added
+
+- **Task list filters**: `query`, `projectId`, `tagId`, `includeDone`, `source` parameters on `task.list`
+- **Time fields**: `timeEstimate` and `timeSpent` (milliseconds, non-negative) on `task.create` and `task.update`
+- **Current task**: `task.get_current` to read the active task, `task.set_current` to set or clear it
+- **Status read**: `status.get` operation for SP application status summary
+- **Project/tag search**: `query` parameter on `project.list` and `tag.list`
+- MCP tools: `get_status`, `get_current_task`, `set_current_task`
+- CLI commands: `status`, `tasks current`, `tasks set-current <id>`, `tasks clear-current`, filter flags on `tasks list`, `--query` on `projects list` / `tags list`
+- 46 new tests (212 total)
+
+### Changed
+
+- Operation count: 13 → 16
+- `task.list` now accepts optional filter payload (previously rejected any payload)
+- `project.list` and `tag.list` now accept optional `query` payload
+
 ## [0.1.1] — 2026-05-31
 
 ### Added

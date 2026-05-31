@@ -1,6 +1,8 @@
 # Operations Reference
 
-The bridge exposes 13 operations for controlling Super Productivity. These are the stable contract — transport-specific names (MCP tools, CLI subcommands) are adapter details.
+The bridge exposes 16 operations for controlling Super Productivity. These are the stable contract — transport-specific names (MCP tools, CLI subcommands) are adapter details.
+
+Verified against Super Productivity 18.8.0 (commit `24725c9`).
 
 ## Call Shape
 
@@ -33,39 +35,45 @@ payload:   { "title": "Review budget", "projectId": "p1" }
 
 ## Operations
 
-| Operation         | Description                          | Required Payload   |
-|-------------------|--------------------------------------|--------------------|
-| `task.list`       | List all tasks                       | —                  |
-| `task.get`        | Get a task by ID                     | `id`               |
-| `task.create`     | Create a new task                    | `title`            |
-| `task.update`     | Update fields on an existing task    | `id`               |
-| `task.complete`   | Mark a task as done                  | `id`               |
-| `task.uncomplete` | Mark a task as not done              | `id`               |
-| `task.start`      | Start time tracking for a task       | `id`               |
-| `task.stop_current` | Stop the currently tracked task    | —                  |
-| `task.archive`    | Archive a task                       | `id`               |
-| `task.restore`    | Restore an archived task             | `id`               |
-| `project.list`    | List all projects                    | —                  |
-| `tag.list`        | List all tags                        | —                  |
-| `bridge.health`   | Check SP connectivity and status     | —                  |
+| Operation            | Description                          | Required Payload   |
+|----------------------|--------------------------------------|--------------------|
+| `task.list`          | List tasks (with optional filters)   | —                  |
+| `task.get`           | Get a task by ID                     | `id`               |
+| `task.create`        | Create a new task                    | `title`            |
+| `task.update`        | Update fields on an existing task    | `id`               |
+| `task.complete`      | Mark a task as done                  | `id`               |
+| `task.uncomplete`    | Mark a task as not done              | `id`               |
+| `task.start`         | Start time tracking for a task       | `id`               |
+| `task.stop_current`  | Stop the currently tracked task      | —                  |
+| `task.get_current`   | Get the currently tracked task       | —                  |
+| `task.set_current`   | Set or clear the current task        | `taskId`           |
+| `task.archive`       | Archive a task                       | `id`               |
+| `task.restore`       | Restore an archived task             | `id`               |
+| `project.list`       | List all projects (with query)       | —                  |
+| `tag.list`           | List all tags (with query)           | —                  |
+| `status.get`         | Get SP status summary                | —                  |
+| `bridge.health`      | Check SP connectivity and status     | —                  |
 
 ## Local REST Mapping
 
-| Operation           | HTTP Method | Endpoint              |
-|---------------------|-------------|-----------------------|
-| `task.list`         | GET         | `/tasks`              |
-| `task.get`          | GET         | `/tasks/:id`          |
-| `task.create`       | POST        | `/tasks`              |
-| `task.update`       | PATCH       | `/tasks/:id`          |
-| `task.complete`     | PATCH       | `/tasks/:id` (`{"isDone": true}`)  |
-| `task.uncomplete`   | PATCH       | `/tasks/:id` (`{"isDone": false}`) |
-| `task.start`        | POST        | `/tasks/:id/start`    |
-| `task.stop_current` | POST        | `/task-control/stop`  |
-| `task.archive`      | POST        | `/tasks/:id/archive`  |
-| `task.restore`      | POST        | `/tasks/:id/restore`  |
-| `project.list`      | GET         | `/projects`           |
-| `tag.list`          | GET         | `/tags`               |
-| `bridge.health`     | GET         | `/health` + `/status` |
+| Operation            | HTTP Method | Endpoint              |
+|----------------------|-------------|-----------------------|
+| `task.list`          | GET         | `/tasks`              |
+| `task.get`           | GET         | `/tasks/:id`          |
+| `task.create`        | POST        | `/tasks`              |
+| `task.update`        | PATCH       | `/tasks/:id`          |
+| `task.complete`      | PATCH       | `/tasks/:id` (`{"isDone": true}`)  |
+| `task.uncomplete`    | PATCH       | `/tasks/:id` (`{"isDone": false}`) |
+| `task.start`         | POST        | `/tasks/:id/start`    |
+| `task.stop_current`  | POST        | `/task-control/stop`  |
+| `task.get_current`   | GET         | `/task-control/current` |
+| `task.set_current`   | POST        | `/task-control/current` |
+| `task.archive`       | POST        | `/tasks/:id/archive`  |
+| `task.restore`       | POST        | `/tasks/:id/restore`  |
+| `project.list`       | GET         | `/projects`           |
+| `tag.list`           | GET         | `/tags`               |
+| `status.get`         | GET         | `/status`             |
+| `bridge.health`      | GET         | `/health` + `/status` |
 
 ## Error Codes
 
@@ -85,21 +93,24 @@ payload:   { "title": "Review budget", "projectId": "p1" }
 
 The MCP adapter maps snake_case tool names to core operations:
 
-| MCP Tool            | Core Operation      |
-|---------------------|---------------------|
-| `health`            | `bridge.health`     |
-| `list_tasks`        | `task.list`         |
-| `get_task`          | `task.get`          |
-| `create_task`       | `task.create`       |
-| `update_task`       | `task.update`       |
-| `complete_task`     | `task.complete`     |
-| `uncomplete_task`   | `task.uncomplete`   |
-| `start_task`        | `task.start`        |
-| `stop_current_task` | `task.stop_current` |
-| `archive_task`      | `task.archive`      |
-| `restore_task`      | `task.restore`      |
-| `list_projects`     | `project.list`      |
-| `list_tags`         | `tag.list`          |
+| MCP Tool            | Core Operation       |
+|---------------------|----------------------|
+| `health`            | `bridge.health`      |
+| `get_status`        | `status.get`         |
+| `list_tasks`        | `task.list`          |
+| `get_task`          | `task.get`           |
+| `create_task`       | `task.create`        |
+| `update_task`       | `task.update`        |
+| `complete_task`     | `task.complete`      |
+| `uncomplete_task`   | `task.uncomplete`    |
+| `start_task`        | `task.start`         |
+| `stop_current_task` | `task.stop_current`  |
+| `get_current_task`  | `task.get_current`   |
+| `set_current_task`  | `task.set_current`   |
+| `archive_task`      | `task.archive`       |
+| `restore_task`      | `task.restore`       |
+| `list_projects`     | `project.list`       |
+| `list_tags`         | `tag.list`           |
 
 ## Payload Fields
 
@@ -107,17 +118,19 @@ Use Super Productivity's native camelCase field names at all REST boundaries.
 
 ### `task.create` fields
 
-| Field         | Type                    | Required | Notes                                                |
-|---------------|-------------------------|----------|------------------------------------------------------|
-| `title`       | `string`                | **yes**  | Non-empty                                            |
-| `projectId`   | `string \| null`        | no       | Project to assign                                    |
-| `tagIds`      | `string[]`              | no       | Tag IDs to assign                                    |
-| `notes`       | `string`                | no       | Task notes                                           |
-| `parentId`    | `string`                | no       | Parent task ID (subtask). **Create-only.** Cannot be combined with `projectId` or `tagIds` (subtasks inherit from parent) |
-| `plannedAt`   | `string \| int \| null` | no       | Planned date/time (ISO string or Unix ms timestamp)  |
-| `dueDay`      | `string \| null`        | no       | Due date (YYYY-MM-DD format)                         |
-| `dueWithTime` | `int \| null`           | no       | Due date+time as Unix millisecond timestamp          |
-| `isDone`      | `boolean`               | no       | Completion status                                    |
+| Field          | Type                    | Required | Notes                                                |
+|----------------|-------------------------|----------|------------------------------------------------------|
+| `title`        | `string`                | **yes**  | Non-empty                                            |
+| `projectId`    | `string \| null`        | no       | Project to assign                                    |
+| `tagIds`       | `string[]`              | no       | Tag IDs to assign                                    |
+| `notes`        | `string`                | no       | Task notes                                           |
+| `parentId`     | `string`                | no       | Parent task ID (subtask). **Create-only.** Cannot be combined with `projectId` or `tagIds` (subtasks inherit from parent) |
+| `plannedAt`    | `string \| int \| null` | no       | Planned date/time (ISO string or Unix ms timestamp)  |
+| `dueDay`       | `string \| null`        | no       | Due date (YYYY-MM-DD format)                         |
+| `dueWithTime`  | `int \| null`           | no       | Due date+time as Unix millisecond timestamp          |
+| `isDone`       | `boolean`               | no       | Completion status                                    |
+| `timeEstimate` | `int`                   | no       | Estimated time in milliseconds (≥ 0)                 |
+| `timeSpent`    | `int`                   | no       | Time spent in milliseconds (≥ 0). **Absolute replacement**, not additive |
 
 ### `task.update` fields
 
@@ -126,13 +139,37 @@ Same as `task.create` except:
 - `parentId` is **not allowed** (upstream rejects it on PATCH)
 - At least one field besides `id` must be provided
 
-### ID-only operations
+### `task.list` filters
 
-`task.get`, `task.complete`, `task.uncomplete`, `task.start`, `task.archive`, `task.restore` require only `{ "id": "<task-id>" }`.
+All optional query parameters passed as payload fields:
+
+| Field         | Type      | Notes                                            |
+|---------------|-----------|--------------------------------------------------|
+| `query`       | `string`  | Search tasks by title substring                  |
+| `projectId`   | `string`  | Filter by project ID                             |
+| `tagId`       | `string`  | Filter by tag ID                                 |
+| `includeDone` | `boolean` | Include completed tasks (default: false)         |
+| `source`      | `string`  | `"active"` (default), `"archived"`, or `"all"`   |
+
+### `project.list` / `tag.list` filters
+
+| Field   | Type     | Notes                     |
+|---------|----------|---------------------------|
+| `query` | `string` | Filter by name substring  |
+
+### `task.set_current` payload
+
+| Field    | Type            | Notes                                        |
+|----------|-----------------|----------------------------------------------|
+| `taskId` | `string \| null`| **Required.** Task ID to set as current, or `null` to clear. |
 
 ### No-payload operations
 
-`task.list`, `task.stop_current`, `project.list`, `tag.list`, `bridge.health` take no payload.
+`task.get_current`, `task.stop_current`, `status.get`, `bridge.health` take no payload.
+
+### ID-only operations
+
+`task.get`, `task.complete`, `task.uncomplete`, `task.start`, `task.archive`, `task.restore` require only `{ "id": "<task-id>" }`.
 
 ## Excluded Operations
 

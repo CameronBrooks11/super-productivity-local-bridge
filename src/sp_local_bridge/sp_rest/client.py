@@ -27,11 +27,17 @@ class SPRestClient:
     def _client(self) -> httpx.AsyncClient:
         return httpx.AsyncClient(base_url=self._base_url, timeout=self._timeout)
 
-    async def _request(self, method: str, path: str, json: dict[str, Any] | None = None) -> BridgeResult:
+    async def _request(
+        self,
+        method: str,
+        path: str,
+        json: dict[str, Any] | None = None,
+        params: dict[str, str] | None = None,
+    ) -> BridgeResult:
         """Execute a request and translate the SP response envelope."""
         try:
             async with self._client() as client:
-                response = await client.request(method, path, json=json)
+                response = await client.request(method, path, json=json, params=params)
         except httpx.ConnectError:
             return BridgeResult.failure(errors.SP_UNAVAILABLE, "Cannot connect to Super Productivity Local REST API.")
         except httpx.TimeoutException:
@@ -109,9 +115,9 @@ class SPRestClient:
         """GET /status"""
         return await self._request("GET", "/status")
 
-    async def list_tasks(self) -> BridgeResult:
-        """GET /tasks"""
-        return await self._request("GET", "/tasks")
+    async def list_tasks(self, params: dict[str, str] | None = None) -> BridgeResult:
+        """GET /tasks with optional query params."""
+        return await self._request("GET", "/tasks", params=params)
 
     async def get_task(self, task_id: str) -> BridgeResult:
         """GET /tasks/:id"""
@@ -141,10 +147,18 @@ class SPRestClient:
         """POST /tasks/:id/restore"""
         return await self._request("POST", f"/tasks/{task_id}/restore")
 
-    async def list_projects(self) -> BridgeResult:
-        """GET /projects"""
-        return await self._request("GET", "/projects")
+    async def get_current_task(self) -> BridgeResult:
+        """GET /task-control/current"""
+        return await self._request("GET", "/task-control/current")
 
-    async def list_tags(self) -> BridgeResult:
-        """GET /tags"""
-        return await self._request("GET", "/tags")
+    async def set_current_task(self, task_id: str | None) -> BridgeResult:
+        """POST /task-control/current"""
+        return await self._request("POST", "/task-control/current", json={"taskId": task_id})
+
+    async def list_projects(self, params: dict[str, str] | None = None) -> BridgeResult:
+        """GET /projects with optional query params."""
+        return await self._request("GET", "/projects", params=params)
+
+    async def list_tags(self, params: dict[str, str] | None = None) -> BridgeResult:
+        """GET /tags with optional query params."""
+        return await self._request("GET", "/tags", params=params)

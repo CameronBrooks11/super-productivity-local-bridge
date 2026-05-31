@@ -21,6 +21,7 @@ from sp_local_bridge.sp_rest.client import SPRestClient
 # MCP tool name → core operation mapping
 _TOOL_MAP: dict[str, Operation] = {
     "health": Operation.BRIDGE_HEALTH,
+    "get_status": Operation.STATUS_GET,
     "list_tasks": Operation.TASK_LIST,
     "get_task": Operation.TASK_GET,
     "create_task": Operation.TASK_CREATE,
@@ -29,6 +30,8 @@ _TOOL_MAP: dict[str, Operation] = {
     "uncomplete_task": Operation.TASK_UNCOMPLETE,
     "start_task": Operation.TASK_START,
     "stop_current_task": Operation.TASK_STOP_CURRENT,
+    "get_current_task": Operation.TASK_GET_CURRENT,
+    "set_current_task": Operation.TASK_SET_CURRENT,
     "archive_task": Operation.TASK_ARCHIVE,
     "restore_task": Operation.TASK_RESTORE,
     "list_projects": Operation.PROJECT_LIST,
@@ -51,9 +54,31 @@ _TOOLS: list[Tool] = [
         annotations=_READ_ONLY,
     ),
     Tool(
-        name="list_tasks",
-        description="List all tasks.",
+        name="get_status",
+        description="Get Super Productivity app status: current task, current task ID, and task count.",
         inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
+    ),
+    Tool(
+        name="list_tasks",
+        description="List tasks with optional filters.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Filter by title substring (case-insensitive)."},
+                "projectId": {"type": "string", "description": "Filter by project ID."},
+                "tagId": {
+                    "type": "string",
+                    "description": "Filter by tag ID. Use 'TODAY' to get tasks scheduled for today.",
+                },
+                "includeDone": {"type": "boolean", "description": "Include completed tasks. Default: false."},
+                "source": {
+                    "type": "string",
+                    "enum": ["active", "archived", "all"],
+                    "description": "Task pool to query. Default: 'active'.",
+                },
+            },
+        },
         annotations=_READ_ONLY,
     ),
     Tool(
@@ -90,6 +115,16 @@ _TOOLS: list[Tool] = [
                     "description": "Due date+time as Unix ms timestamp, or null to clear.",
                 },
                 "isDone": {"type": "boolean", "description": "Completion status."},
+                "timeEstimate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Time estimate in milliseconds.",
+                },
+                "timeSpent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Total time spent in milliseconds (absolute value, not additive).",
+                },
             },
             "required": ["title"],
         },
@@ -116,6 +151,16 @@ _TOOLS: list[Tool] = [
                     "description": "Due date+time as Unix ms timestamp, or null to clear.",
                 },
                 "isDone": {"type": "boolean", "description": "Completion status."},
+                "timeEstimate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Time estimate in milliseconds.",
+                },
+                "timeSpent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Total time spent in milliseconds (absolute value, not additive).",
+                },
             },
             "required": ["id"],
         },
@@ -158,6 +203,27 @@ _TOOLS: list[Tool] = [
         annotations=_MUTATING,
     ),
     Tool(
+        name="get_current_task",
+        description="Get the currently tracked task, or null if idle.",
+        inputSchema={"type": "object", "properties": {}},
+        annotations=_READ_ONLY,
+    ),
+    Tool(
+        name="set_current_task",
+        description="Set or clear the currently tracked task by ID.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "taskId": {
+                    "type": ["string", "null"],
+                    "description": "Task ID to set as current, or null to clear.",
+                },
+            },
+            "required": ["taskId"],
+        },
+        annotations=_MUTATING,
+    ),
+    Tool(
         name="archive_task",
         description="Archive a task by ID.",
         inputSchema={
@@ -179,14 +245,24 @@ _TOOLS: list[Tool] = [
     ),
     Tool(
         name="list_projects",
-        description="List all projects.",
-        inputSchema={"type": "object", "properties": {}},
+        description="List projects with optional search.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Filter by title substring (case-insensitive)."},
+            },
+        },
         annotations=_READ_ONLY,
     ),
     Tool(
         name="list_tags",
-        description="List all tags.",
-        inputSchema={"type": "object", "properties": {}},
+        description="List tags with optional search.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Filter by title substring (case-insensitive)."},
+            },
+        },
         annotations=_READ_ONLY,
     ),
 ]

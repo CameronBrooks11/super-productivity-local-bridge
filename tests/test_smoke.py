@@ -4,7 +4,7 @@ import sp_local_bridge
 
 
 def test_version():
-    assert sp_local_bridge.__version__ == "0.1.1"
+    assert sp_local_bridge.__version__ == "0.2.0"
 
 
 def test_import_core():

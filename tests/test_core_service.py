@@ -394,3 +394,326 @@ class TestErrorPropagation:
         assert result.ok is False
         assert result.error is not None
         assert result.error.code == errors.TIMEOUT
+
+
+class TestTaskListFilters:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_query_filter(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"query": "budget"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["query"] == "budget"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_project_id_filter(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"projectId": "proj-1"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["projectId"] == "proj-1"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_tag_id_filter(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"tagId": "TODAY"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["tagId"] == "TODAY"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_include_done(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"includeDone": True}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["includeDone"] == "true"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_source_archived(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"source": "archived"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["source"] == "archived"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_with_source_all(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"source": "all"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["source"] == "all"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_list_no_filters_no_params(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json=load_fixture("task-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST))
+        assert result.ok is True
+        assert str(route.calls[0].request.url) == f"{BASE_URL}/tasks"
+
+    @pytest.mark.asyncio
+    async def test_rejects_unknown_filter(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"badFilter": "x"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "badFilter" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_invalid_source_value(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"source": "invalid"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "source" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_non_string_query(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"query": 123}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "query" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_non_bool_include_done(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_LIST, payload={"includeDone": "yes"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "includeDone" in result.error.message
+
+
+class TestProjectTagSearch:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_project_list_with_query(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/projects").mock(
+            return_value=httpx.Response(200, json=load_fixture("project-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.PROJECT_LIST, payload={"query": "work"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["query"] == "work"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_tag_list_with_query(self, service: BridgeService):
+        route = respx.get(f"{BASE_URL}/tags").mock(
+            return_value=httpx.Response(200, json=load_fixture("tag-list-ok.json"))
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TAG_LIST, payload={"query": "urgent"}))
+        assert result.ok is True
+        assert route.calls[0].request.url.params["query"] == "urgent"
+
+    @pytest.mark.asyncio
+    async def test_project_list_rejects_unknown_filter(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.PROJECT_LIST, payload={"badField": "x"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_tag_list_rejects_unknown_filter(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TAG_LIST, payload={"source": "all"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_project_list_rejects_non_string_query(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.PROJECT_LIST, payload={"query": 42}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+
+class TestTimeFields:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_create_with_time_estimate(self, service: BridgeService):
+        route = respx.post(f"{BASE_URL}/tasks").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "new", "title": "OK"}})
+        )
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "timeEstimate": 3600000})
+        )
+        assert result.ok is True
+        import json as json_mod
+
+        body = json_mod.loads(route.calls[0].request.content)
+        assert body["timeEstimate"] == 3600000
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_update_with_time_spent(self, service: BridgeService):
+        route = respx.patch(f"{BASE_URL}/tasks/t1").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1"}})
+        )
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_UPDATE, payload={"id": "t1", "timeSpent": 1800000})
+        )
+        assert result.ok is True
+        import json as json_mod
+
+        body = json_mod.loads(route.calls[0].request.content)
+        assert body["timeSpent"] == 1800000
+
+    @pytest.mark.asyncio
+    async def test_rejects_negative_time_estimate(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "timeEstimate": -1})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "timeEstimate" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_negative_time_spent(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_UPDATE, payload={"id": "t1", "timeSpent": -100})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "timeSpent" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_bool_for_time_estimate(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_CREATE, payload={"title": "OK", "timeEstimate": True})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "timeEstimate" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_rejects_string_for_time_spent(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_UPDATE, payload={"id": "t1", "timeSpent": "1h"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "timeSpent" in result.error.message
+
+
+class TestCurrentTask:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_get_current_task(self, service: BridgeService):
+        respx.get(f"{BASE_URL}/task-control/current").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": {"id": "t1", "title": "Active"}})
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_GET_CURRENT))
+        assert result.ok is True
+        assert result.data["id"] == "t1"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_get_current_task_idle(self, service: BridgeService):
+        respx.get(f"{BASE_URL}/task-control/current").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": None})
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_GET_CURRENT))
+        assert result.ok is True
+        assert result.data is None
+
+    @pytest.mark.asyncio
+    async def test_get_current_rejects_payload(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_GET_CURRENT, payload={"extra": "bad"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_set_current_task(self, service: BridgeService):
+        route = respx.post(f"{BASE_URL}/task-control/current").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": None})
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_SET_CURRENT, payload={"taskId": "t1"}))
+        assert result.ok is True
+        import json as json_mod
+
+        body = json_mod.loads(route.calls[0].request.content)
+        assert body["taskId"] == "t1"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_set_current_task_clear(self, service: BridgeService):
+        route = respx.post(f"{BASE_URL}/task-control/current").mock(
+            return_value=httpx.Response(200, json={"ok": True, "data": None})
+        )
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_SET_CURRENT, payload={"taskId": None}))
+        assert result.ok is True
+        import json as json_mod
+
+        body = json_mod.loads(route.calls[0].request.content)
+        assert body["taskId"] is None
+
+    @pytest.mark.asyncio
+    async def test_set_current_task_no_payload(self, service: BridgeService):
+        """set_current with empty payload should be rejected (taskId required)."""
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_SET_CURRENT))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+        assert "taskId" in result.error.message
+
+    @pytest.mark.asyncio
+    async def test_set_current_rejects_empty_string(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_SET_CURRENT, payload={"taskId": ""}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_set_current_rejects_non_string(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.TASK_SET_CURRENT, payload={"taskId": 123}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+    @pytest.mark.asyncio
+    async def test_set_current_rejects_extra_fields(self, service: BridgeService):
+        result = await service.execute(
+            BridgeRequest(operation=Operation.TASK_SET_CURRENT, payload={"taskId": "t1", "extra": "bad"})
+        )
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
+
+
+class TestStatusGet:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_status_get(self, service: BridgeService):
+        respx.get(f"{BASE_URL}/status").mock(return_value=httpx.Response(200, json=load_fixture("status-ok.json")))
+        result = await service.execute(BridgeRequest(operation=Operation.STATUS_GET))
+        assert result.ok is True
+        assert "currentTask" in result.data
+
+    @pytest.mark.asyncio
+    async def test_status_get_rejects_payload(self, service: BridgeService):
+        result = await service.execute(BridgeRequest(operation=Operation.STATUS_GET, payload={"extra": "bad"}))
+        assert result.ok is False
+        assert result.error is not None
+        assert result.error.code == errors.INVALID_INPUT
