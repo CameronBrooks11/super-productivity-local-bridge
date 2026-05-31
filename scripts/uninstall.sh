@@ -35,11 +35,30 @@ uninstall_package() {
     fi
 }
 
+remove_skill_symlink() {
+    local skill_link="$HOME/.agents/skills/sp-local-bridge-setup"
+
+    if [[ ! -L "$skill_link" && ! -e "$skill_link" ]]; then
+        info "No skill symlink at $skill_link"
+        return
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        action "[dry-run] Would remove symlink: $skill_link"
+    else
+        rm -f "$skill_link"
+        info "✓ Skill symlink removed: $skill_link"
+    fi
+}
+
 print_reminders() {
     echo
     echo "Reminders:"
-    echo "  • Remove the MCP server entry from your host config if configured:"
-    echo "    - Claude Desktop: ~/.config/Claude/claude_desktop_config.json"
+    echo "  • Remove MCP host config entries:"
+    echo "    sp-local-bridge-configure --remove claude-desktop"
+    echo "    sp-local-bridge-configure --remove vscode-copilot"
+    echo "    sp-local-bridge-configure --remove codex"
+    echo "  • Or manually remove from your host config file."
     echo "  • The Super Productivity desktop app and its data are not affected."
     echo
 }
@@ -64,6 +83,9 @@ main() {
 
     echo "Removing package..."
     uninstall_package
+
+    echo "Removing skill symlink..."
+    remove_skill_symlink
 
     print_reminders
 }

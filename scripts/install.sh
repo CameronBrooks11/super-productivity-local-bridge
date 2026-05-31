@@ -110,6 +110,26 @@ install_package() {
     fi
 }
 
+register_skill() {
+    local skills_dir="$HOME/.agents/skills"
+    local skill_source="$SCRIPT_DIR/skills/sp-local-bridge-setup"
+    local skill_link="$skills_dir/sp-local-bridge-setup"
+
+    if [[ ! -d "$skill_source" ]]; then
+        warn "Skills directory not found at $skill_source — skipping"
+        return
+    fi
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        action "[dry-run] Would create symlink: $skill_link → $skill_source"
+        return
+    fi
+
+    mkdir -p "$skills_dir"
+    ln -sfn "$skill_source" "$skill_link"
+    info "✓ Skill registered: $skill_link → $skill_source"
+}
+
 verify_install() {
     if [[ "$DRY_RUN" == "true" ]]; then
         local bin_dir
@@ -169,19 +189,22 @@ print_next_steps() {
     local mcp_cmd="sp-local-bridge-mcp"
     local doctor_cmd="sp-local-bridge-doctor"
     local config_cmd="sp-local-bridge-print-config"
+    local configure_cmd="sp-local-bridge-configure"
 
     # Use absolute paths if not on PATH
     if ! command -v sp-local-bridge-mcp &>/dev/null && [[ -x "$bin_dir/sp-local-bridge-mcp" ]]; then
         mcp_cmd="$bin_dir/sp-local-bridge-mcp"
         doctor_cmd="$bin_dir/sp-local-bridge-doctor"
         config_cmd="$bin_dir/sp-local-bridge-print-config"
+        configure_cmd="$bin_dir/sp-local-bridge-configure"
     fi
 
     echo
     echo "Next steps:"
     echo "  1. Enable Local REST API in Super Productivity: Settings → Misc"
     echo "  2. Run: $doctor_cmd"
-    echo "  3. For MCP host config: $config_cmd claude-desktop"
+    echo "  3. Configure a host: $configure_cmd vscode-copilot"
+    echo "     Or print config:  $config_cmd claude-desktop"
     echo
 }
 
@@ -210,6 +233,10 @@ main() {
 
     echo "Installing..."
     install_package
+    echo
+
+    echo "Registering agent skill..."
+    register_skill
     echo
 
     echo "Verifying..."
