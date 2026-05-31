@@ -224,3 +224,70 @@ args = []
         captured = capsys.readouterr()
         assert "cannot parse" in captured.err
         assert "Manual repair" in captured.err
+
+    def test_preserves_complex_toml_values(self, tmp_config_dir):
+        """Inline tables, numbers, and env maps in other entries must survive."""
+        import tomllib
+
+        config_path = tmp_config_dir["codex"]
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        existing_content = """\
+[model]
+name = "gpt-4o"
+temperature = 0.7
+
+[mcp_servers.complex_tool]
+command = '/usr/bin/complex'
+args = ['--verbose']
+env = { TOKEN = "secret123", DEBUG = "1" }
+timeout = 30
+"""
+        config_path.write_text(existing_content)
+
+        result = configure_host("codex")
+        assert result == 0
+
+        written = config_path.read_text()
+        data = tomllib.loads(written)
+
+        # Our entry is present
+        assert "superProductivity" in data["mcp_servers"]
+        # Complex tool with inline table preserved
+        assert data["mcp_servers"]["complex_tool"]["env"]["TOKEN"] == "secret123"
+        assert data["mcp_servers"]["complex_tool"]["env"]["DEBUG"] == "1"
+        assert data["mcp_servers"]["complex_tool"]["timeout"] == 30
+        # Model section preserved with number
+        assert data["model"]["temperature"] == 0.7
+
+    def test_remove_preserves_other_toml_entries(self, tmp_config_dir):
+        """Remove only deletes our entry, preserves complex sibling entries."""
+        import tomllib
+
+        config_path = tmp_config_dir["codex"]
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        existing_content = """\
+[model]
+name = "gpt-4o"
+
+[mcp_servers.superProductivity]
+command = '/home/user/.local/bin/sp-local-bridge-mcp'
+args = []
+
+[mcp_servers.other_tool]
+command = '/usr/bin/other'
+env = { API_KEY = "abc" }
+"""
+        config_path.write_text(existing_content)
+
+        result = configure_host("codex", remove=True)
+        assert result == 0
+
+        written = config_path.read_text()
+        data = tomllib.loads(written)
+
+        # Our entry removed
+        assert "superProductivity" not in data.get("mcp_servers", {})
+        # Other tool preserved with complex value
+        assert data["mcp_servers"]["other_tool"]["env"]["API_KEY"] == "abc"
+        # Model section preserved
+        assert data["model"]["name"] == "gpt-4o"

@@ -105,11 +105,15 @@ async def _run_checks() -> list[_Check]:
 
     configured_hosts: list[str] = []
     unconfigured_hosts: list[str] = []
+    errored_hosts: list[str] = []
     for host in sorted(_HOSTS.keys()):
-        if check_host_configured(host):
-            configured_hosts.append(host)
-        else:
-            unconfigured_hosts.append(host)
+        try:
+            if check_host_configured(host):
+                configured_hosts.append(host)
+            else:
+                unconfigured_hosts.append(host)
+        except (ValueError, OSError):
+            errored_hosts.append(host)
 
     if configured_hosts:
         hosts_str = ", ".join(configured_hosts)
@@ -131,6 +135,16 @@ async def _run_checks() -> list[_Check]:
                 "host_config_available",
                 True,
                 f"Available to configure: {uncfg_str}",
+            )
+        )
+
+    if errored_hosts:
+        err_str = ", ".join(errored_hosts)
+        checks.append(
+            _Check(
+                "host_config_parse_error",
+                True,
+                f"Config parse error (manual fix needed): {err_str}",
             )
         )
 

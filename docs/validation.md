@@ -8,7 +8,7 @@ This page documents the manual validation performed against a live Super Product
 
 Verified:
 - Clean install via `scripts/install.sh` succeeds on Linux (Python 3.11, uv 0.11.12)
-- All 4 entry points are accessible after install: `sp-local-bridge`, `sp-local-bridge-mcp`, `sp-local-bridge-doctor`, `sp-local-bridge-print-config`
+- All 5 entry points are accessible after install: `sp-local-bridge`, `sp-local-bridge-mcp`, `sp-local-bridge-doctor`, `sp-local-bridge-print-config`, `sp-local-bridge-configure`
 - `--dry-run` mode previews without side effects
 - Uninstall script removes all installed binaries
 - Reinstall over existing installation works without errors

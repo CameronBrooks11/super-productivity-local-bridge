@@ -10,7 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from sp_local_bridge.diagnostics.host_config import _HOSTS, _build_config, _format_toml_config
+from sp_local_bridge.diagnostics.host_config import _HOSTS, _build_config
 
 # Concrete writable paths per host (no "(workspace) or ..." ambiguity)
 _WRITABLE_PATHS: dict[str, dict[str, str]] = {
@@ -115,37 +115,62 @@ def _write_json(path: Path, data: dict) -> None:
     _atomic_write(path, json.dumps(data, indent=2) + "\n")
 
 
-def _write_toml_full(path: Path, original_lines: list[str], server_key: str, merged_servers: dict) -> None:
-    """Write TOML config preserving all content outside our server table.
+def _write_toml_full(
+    path: Path,
+    original_lines: list[str],
+    server_key: str,
+    entry_name: str,
+    entry_content: str | None,
+) -> None:
+    """Surgically add/replace/remove only [server_key.entry_name] in a TOML file.
 
-    Strategy: read original file, find/replace the mcp_servers table block,
-    preserve everything else verbatim.
+    Preserves every other byte of the file verbatim — including other
+    mcp_servers entries with complex values (env tables, numbers, etc.).
+
+    Args:
+        path: Config file path.
+        original_lines: Current file content as lines (with newlines).
+        server_key: Top-level table key (e.g. "mcp_servers").
+        entry_name: Our sub-table name (e.g. "superProductivity").
+        entry_content: TOML text for our entry (without the header), or None to remove.
     """
     _backup(path)
-    new_block = _format_toml_config({server_key: merged_servers})
 
-    # Find existing table boundaries
-    table_start = None
-    table_end = None
+    target_header = f"[{server_key}.{entry_name}]"
+
+    # Find the boundaries of our specific entry
+    entry_start = None
+    entry_end = None
     for i, line in enumerate(original_lines):
         stripped = line.strip()
-        if stripped.startswith(f"[{server_key}") and not stripped.startswith(f"[[{server_key}"):
-            table_start = i
-        elif table_start is not None and stripped.startswith("[") and not stripped.startswith(f"[{server_key}"):
-            table_end = i
+        if stripped == target_header:
+            entry_start = i
+        elif entry_start is not None and stripped.startswith("[") and i > entry_start:
+            entry_end = i
             break
 
-    if table_start is not None:
-        # Replace existing block
-        if table_end is None:
-            table_end = len(original_lines)
-        result_lines = [*original_lines[:table_start], new_block + "\n", *original_lines[table_end:]]
-    else:
-        # Append new block at end
+    if entry_start is not None:
+        # Found existing entry — replace or remove it
+        if entry_end is None:
+            entry_end = len(original_lines)
+        if entry_content is not None:
+            replacement = target_header + "\n" + entry_content + "\n"
+            result_lines = [*original_lines[:entry_start], replacement, *original_lines[entry_end:]]
+        else:
+            # Remove — also eat a preceding blank line if present
+            start = entry_start
+            if start > 0 and original_lines[start - 1].strip() == "":
+                start -= 1
+            result_lines = [*original_lines[:start], *original_lines[entry_end:]]
+    elif entry_content is not None:
+        # Entry doesn't exist yet — append
         result_lines = original_lines[:]
         if result_lines and result_lines[-1].strip():
             result_lines.append("\n")
-        result_lines.append(new_block + "\n")
+        result_lines.append(target_header + "\n" + entry_content + "\n")
+    else:
+        # Nothing to remove
+        result_lines = original_lines[:]
 
     _atomic_write(path, "".join(result_lines))
 
@@ -165,6 +190,23 @@ def configure_host(host: str, *, dry_run: bool = False, remove: bool = False) ->
     if remove:
         return _remove_entry(config_path, fmt, server_key, entry_name, dry_run=dry_run)
     return _add_entry(host, config_path, fmt, server_key, entry_name, dry_run=dry_run)
+
+
+def _format_single_entry(entry: dict) -> str:
+    """Format a single MCP server entry as TOML key=value lines (no header).
+
+    Uses literal strings (single quotes) for values to avoid backslash issues.
+    """
+    lines: list[str] = []
+    for key, value in entry.items():
+        if isinstance(value, str):
+            lines.append(f"{key} = '{value}'")
+        elif isinstance(value, list):
+            items = ", ".join(f"'{v}'" for v in value)
+            lines.append(f"{key} = [{items}]")
+        elif isinstance(value, bool):
+            lines.append(f"{key} = {'true' if value else 'false'}")
+    return "\n".join(lines)
 
 
 def _add_entry(host: str, config_path: Path, fmt: str, server_key: str, entry_name: str, *, dry_run: bool) -> int:
@@ -188,23 +230,20 @@ def _add_entry(host: str, config_path: Path, fmt: str, server_key: str, entry_na
 
             _write_json(config_path, existing)
         else:
-            # TOML — preserve all existing content, only merge our server entry
-            existing = _read_toml(config_path)
-            if server_key not in existing:
-                existing[server_key] = {}
-            existing[server_key][entry_name] = our_entry
-
-            # Read original lines to preserve non-mcp_servers content
+            # TOML — surgically add/replace only our entry, preserve everything else
             original_lines: list[str] = []
             if config_path.exists():
                 original_lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
 
+            entry_toml = _format_single_entry(our_entry)
+
             if dry_run:
                 print(f"Would write to: {config_path}")
-                print(_format_toml_config(existing))
+                print(f"[{server_key}.{entry_name}]")
+                print(entry_toml)
                 return 0
 
-            _write_toml_full(config_path, original_lines, server_key, existing[server_key])
+            _write_toml_full(config_path, original_lines, server_key, entry_name, entry_toml)
     except (json.JSONDecodeError, ValueError) as e:
         print(f"Error: cannot parse {config_path}", file=sys.stderr)
         print(f"  {e}", file=sys.stderr)
@@ -247,19 +286,15 @@ def _remove_entry(config_path: Path, fmt: str, server_key: str, entry_name: str,
         if fmt == "json":
             print(json.dumps(existing, indent=2))
         else:
-            print(_format_toml_config(existing))
+            print(f"  (would remove [{server_key}.{entry_name}] section)")
         return 0
 
     if fmt == "json":
         _write_json(config_path, existing)
     else:
-        # For remove, rewrite full file preserving other content
+        # Surgically remove only our entry from the TOML file
         original_lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
-        if servers:
-            _write_toml_full(config_path, original_lines, server_key, servers)
-        else:
-            # Remove entire server_key table block
-            _write_toml_full(config_path, original_lines, server_key, {})
+        _write_toml_full(config_path, original_lines, server_key, entry_name, None)
 
     print(f"✓ Removed sp-local-bridge entry from {config_path}")
     return 0

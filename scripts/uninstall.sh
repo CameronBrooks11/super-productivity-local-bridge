@@ -51,14 +51,31 @@ remove_skill_symlink() {
     fi
 }
 
+remove_host_configs() {
+    local hosts=("claude-desktop" "vscode-copilot" "codex")
+    local removed_any=false
+
+    for host in "${hosts[@]}"; do
+        if [[ "$DRY_RUN" == "true" ]]; then
+            action "[dry-run] Would run: sp-local-bridge-configure --remove $host"
+            removed_any=true
+        else
+            if sp-local-bridge-configure --remove "$host" 2>/dev/null; then
+                removed_any=true
+            fi
+        fi
+    done
+
+    if [[ "$removed_any" == "false" ]]; then
+        info "No host configs to remove (or configure command unavailable)"
+    fi
+}
+
 print_reminders() {
     echo
     echo "Reminders:"
-    echo "  • Remove MCP host config entries:"
-    echo "    sp-local-bridge-configure --remove claude-desktop"
-    echo "    sp-local-bridge-configure --remove vscode-copilot"
-    echo "    sp-local-bridge-configure --remove codex"
-    echo "  • Or manually remove from your host config file."
+    echo "  • If any host configs could not be removed automatically,"
+    echo "    manually remove the superProductivity entry from your host config file."
     echo "  • The Super Productivity desktop app and its data are not affected."
     echo
 }
@@ -80,6 +97,9 @@ main() {
         info "[dry-run mode — no changes will be made]"
         echo
     fi
+
+    echo "Removing host configs..."
+    remove_host_configs
 
     echo "Removing package..."
     uninstall_package
