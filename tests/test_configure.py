@@ -291,3 +291,45 @@ env = { API_KEY = "abc" }
         assert data["mcp_servers"]["other_tool"]["env"]["API_KEY"] == "abc"
         # Model section preserved
         assert data["model"]["name"] == "gpt-4o"
+
+    def test_malformed_toml_fails_closed_on_add(self, tmp_config_dir, capsys):
+        """Adding to malformed TOML must fail with error, not silently append."""
+        config_path = tmp_config_dir["codex"]
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text("[invalid toml\nthis = is broken {{{")
+
+        result = configure_host("codex")
+        assert result == 1
+        captured = capsys.readouterr()
+        assert "cannot parse" in captured.err
+        assert "Manual repair" in captured.err
+
+    def test_remove_deletes_descendant_tables(self, tmp_config_dir):
+        """Removal must also delete [mcp_servers.superProductivity.env] etc."""
+        import tomllib
+
+        config_path = tmp_config_dir["codex"]
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        existing_content = """\
+[mcp_servers.superProductivity]
+command = '/home/user/.local/bin/sp-local-bridge-mcp'
+args = []
+
+[mcp_servers.superProductivity.env]
+TOKEN = "secret"
+
+[mcp_servers.other_tool]
+command = '/usr/bin/other'
+"""
+        config_path.write_text(existing_content)
+
+        result = configure_host("codex", remove=True)
+        assert result == 0
+
+        written = config_path.read_text()
+        data = tomllib.loads(written)
+
+        # Our entry and its descendant fully removed
+        assert "superProductivity" not in data.get("mcp_servers", {})
+        # Other tool preserved
+        assert data["mcp_servers"]["other_tool"]["command"] == "/usr/bin/other"

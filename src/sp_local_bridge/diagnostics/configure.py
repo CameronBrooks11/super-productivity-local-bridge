@@ -138,7 +138,9 @@ def _write_toml_full(
 
     target_header = f"[{server_key}.{entry_name}]"
 
-    # Find the boundaries of our specific entry
+    target_prefix = f"[{server_key}.{entry_name}"
+
+    # Find the boundaries of our entry AND all descendant tables
     entry_start = None
     entry_end = None
     for i, line in enumerate(original_lines):
@@ -146,6 +148,9 @@ def _write_toml_full(
         if stripped == target_header:
             entry_start = i
         elif entry_start is not None and stripped.startswith("[") and i > entry_start:
+            # Check if this is a descendant table (e.g. [mcp_servers.superProductivity.env])
+            if stripped.startswith(target_prefix + ".") or stripped.startswith(target_prefix + "]"):
+                continue  # descendant — include in our block
             entry_end = i
             break
 
@@ -233,7 +238,10 @@ def _add_entry(host: str, config_path: Path, fmt: str, server_key: str, entry_na
             # TOML — surgically add/replace only our entry, preserve everything else
             original_lines: list[str] = []
             if config_path.exists():
-                original_lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
+                content = config_path.read_text(encoding="utf-8")
+                # Validate existing TOML before touching the file
+                _read_toml(config_path)
+                original_lines = content.splitlines(keepends=True)
 
             entry_toml = _format_single_entry(our_entry)
 

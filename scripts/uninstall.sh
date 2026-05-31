@@ -55,19 +55,26 @@ remove_host_configs() {
     local hosts=("claude-desktop" "vscode-copilot" "codex")
     local removed_any=false
 
+    if ! command -v sp-local-bridge-configure &>/dev/null; then
+        warn "sp-local-bridge-configure not found — cannot auto-remove host configs"
+        return
+    fi
+
     for host in "${hosts[@]}"; do
         if [[ "$DRY_RUN" == "true" ]]; then
             action "[dry-run] Would run: sp-local-bridge-configure --remove $host"
             removed_any=true
         else
-            if sp-local-bridge-configure --remove "$host" 2>/dev/null; then
+            if sp-local-bridge-configure --remove "$host"; then
                 removed_any=true
+            else
+                warn "Failed to remove config for $host (exit $?)"
             fi
         fi
     done
 
     if [[ "$removed_any" == "false" ]]; then
-        info "No host configs to remove (or configure command unavailable)"
+        info "No host configs needed removal"
     fi
 }
 

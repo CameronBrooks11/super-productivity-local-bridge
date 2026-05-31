@@ -143,7 +143,7 @@ async def _run_checks() -> list[_Check]:
         checks.append(
             _Check(
                 "host_config_parse_error",
-                True,
+                False,
                 f"Config parse error (manual fix needed): {err_str}",
             )
         )
