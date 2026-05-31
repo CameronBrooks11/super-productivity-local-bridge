@@ -13,7 +13,7 @@ Super Productivity Local Bridge is a **local automation tool with write access**
 
 ## What It Cannot Do
 
-- **Delete tasks** — `task.delete` is intentionally excluded from v0.1
+- **Delete tasks** — `task.delete` is intentionally excluded
 - **Access network resources** — all communication is to `127.0.0.1:3876`
 - **Modify SP settings** — the bridge only uses data endpoints
 - **Send data externally** — no telemetry, no cloud, no outbound connections

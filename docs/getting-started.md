@@ -4,7 +4,7 @@ Install the bridge, configure your MCP host, and verify everything works.
 
 ## Prerequisites
 
-- [Super Productivity](https://super-productivity.com/) desktop app with **Local REST API enabled** (Settings → Misc)
+- [Super Productivity](https://super-productivity.com/) desktop app with **Local REST API enabled** (Settings → Sync & Export → Local REST API)
 - Python 3.11+
 - [uv](https://docs.astral.sh/uv/)
 

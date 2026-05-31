@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Misc)
+- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Sync & Export → Local REST API)
 - [VS Code](https://code.visualstudio.com/) with GitHub Copilot Chat extension
 - `sp-local-bridge` installed ([Getting Started](../getting-started.md))
 
@@ -64,7 +64,7 @@ Or ask Copilot Chat to check Super Productivity health — it will invoke the `h
 | Problem | Fix |
 |---------|-----|
 | Server not starting | Run `MCP: List Servers` → select server → "Show Output" for logs |
-| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Misc) |
+| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Sync & Export) |
 | Tools not appearing | `MCP: Reset Cached Tools` or restart VS Code |
 | Command not found | Re-run `sp-local-bridge-print-config vscode-copilot` for absolute path |
 

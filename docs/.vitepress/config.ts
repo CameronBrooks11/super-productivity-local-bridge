@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: 'SP Local Bridge',
-  description: 'Control Super Productivity from MCP hosts, CLI, and automation tools',
+  title: 'SP Local Bridge (Python)',
+  description: 'Legacy Python bridge for Super Productivity — superseded by the Go bridge.',
   base: '/super-productivity-local-bridge/',
 
   head: [
@@ -10,10 +10,12 @@ export default defineConfig({
   ],
 
   themeConfig: {
+    siteTitle: 'SP Bridge (Python)',
+
     nav: [
+      { text: '⚡ Go Bridge (recommended)', link: 'https://cameronbrooks11.github.io/super-productivity-local-gobridge/' },
       { text: 'Guide', link: '/getting-started' },
       { text: 'Operations', link: '/operations' },
-      { text: 'GitHub', link: 'https://github.com/CameronBrooks11/super-productivity-local-bridge' },
     ],
 
     sidebar: [
@@ -58,7 +60,7 @@ export default defineConfig({
     },
 
     footer: {
-      message: 'Released under the MIT License.',
+      message: 'Released under the MIT License. New users: use the <a href="https://cameronbrooks11.github.io/super-productivity-local-gobridge/">Go bridge</a>.',
     },
   },
 })

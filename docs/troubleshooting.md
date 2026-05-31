@@ -10,7 +10,7 @@
 
 **Symptom:** Connection refused on port 3876.
 
-**Fix:** In Super Productivity, go to **Settings → Misc** and enable **Local REST API**. Restart SP if the setting was just changed.
+**Fix:** In Super Productivity, go to **Settings → Sync & Export → Local REST API** and enable it. Restart SP if the setting was just changed.
 
 ## MCP Host Cannot Find Command
 

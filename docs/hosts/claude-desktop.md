@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Misc)
+- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Sync & Export → Local REST API)
 - [Claude Desktop](https://claude.ai/download) installed
 - `sp-local-bridge` installed ([Getting Started](../getting-started.md))
 
@@ -66,7 +66,7 @@ Or ask Claude to check your Super Productivity health — it will invoke the bri
 | Problem | Fix |
 |---------|-----|
 | Tools not showing | Restart Claude Desktop after config edit |
-| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Misc) |
+| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Sync & Export) |
 | Command path wrong | Re-run `sp-local-bridge-print-config claude-desktop` for current path |
 | Config parse error | Validate JSON syntax — check for trailing commas |
 

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Misc)
+- [Super Productivity](https://super-productivity.com/) desktop app running with Local REST API enabled (Settings → Sync & Export → Local REST API)
 - [Codex CLI](https://github.com/openai/codex) installed
 - `sp-local-bridge` installed ([Getting Started](../getting-started.md))
 
@@ -67,7 +67,7 @@ Or in the Codex TUI, use `/mcp` to see active servers.
 
 | Problem | Fix |
 |---------|-----|
-| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Misc) |
+| SP unreachable | Start Super Productivity, enable Local REST API (Settings → Sync & Export) |
 | Server not starting | Verify command path exists and is executable |
 | Command path wrong | Re-run `sp-local-bridge-print-config codex` for current path |
 | TOML parse error | Ensure quotes and brackets are correct in config.toml |
