@@ -3,6 +3,8 @@
 import subprocess
 import sys
 
+import sp_local_bridge
+
 
 def test_cli_help():
     result = subprocess.run(
@@ -22,7 +24,10 @@ def test_cli_version():
         text=True,
     )
     assert result.returncode == 0
-    assert "0.2.0" in result.stdout
+    # Compare against the distribution metadata rather than a literal: a
+    # hardcoded version here was one of four copies that had to be bumped
+    # together, and the CLI shipped reporting the wrong one when they were not.
+    assert sp_local_bridge.__version__ in result.stdout
 
 
 def test_cli_unknown_command():

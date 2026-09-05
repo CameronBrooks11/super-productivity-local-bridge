@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] — 2026-09-05
+
+### Fixed
+
+- The version was declared in four places — `pyproject.toml`,
+  `src/sp_local_bridge/__init__.py`, and two test assertions — which had to be
+  bumped together and were not, so 0.2.1 shipped a CLI reporting `0.2.0`.
+  `pyproject.toml` is now the only declaration; `__version__` is read from the
+  installed distribution metadata, and the tests compare against that instead
+  of restating a literal.
+
 ## [0.2.1] — 2026-09-05
 
 Final release. The project is archived; this version exists so the package name
