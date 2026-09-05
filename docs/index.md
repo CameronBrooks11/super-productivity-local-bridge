@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: SP Local Bridge (Python)
-  tagline: "Legacy: the Go bridge has superseded this project for new installations."
+  tagline: "Archived: the Go bridge has superseded this project. New and existing installations should move to it."
   actions:
     - theme: brand
       text: Go Bridge Docs →
@@ -12,9 +12,9 @@ hero:
       link: /getting-started
 features:
   - title: Superseded by Go Bridge
-    details: The Go bridge offers single-binary installs, zero runtime dependencies, and the same 16 operations. New users should use the Go version.
-  - title: Still Functional
-    details: This Python bridge works and will receive critical fixes, but active development has moved to the Go rewrite.
+    details: The Go bridge offers single-binary installs, zero runtime dependencies, and the same 16 operations. All users should move to the Go version.
+  - title: Archived, Not Broken
+    details: This Python bridge still works against the SP Local REST API, but the repository is read-only — no further fixes, releases, or dependency updates.
   - title: 16 Operations
     details: Full task lifecycle — create, update, complete, start, stop, archive, restore — plus projects, tags, and status.
 ---
