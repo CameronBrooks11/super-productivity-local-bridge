@@ -1,6 +1,6 @@
 [project]
 name = "sp-local-bridge"
-version = "0.2.0"
+version = "0.2.1"
 description = "Local automation bridge for Super Productivity — REST-first with MCP adapter"
 readme = "README.md"
 license = "MIT"

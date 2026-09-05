@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-09-05
+
+Final release. The project is archived; this version exists so the package name
+is registered on PyPI and cannot be claimed by anyone else.
+
+### Changed
+
+- Publish to PyPI from CI using trusted publishing (OIDC), so the distribution
+  that carries this name has verifiable provenance. Earlier releases were
+  GitHub Release artifacts only — the name was never registered on PyPI, which
+  left it available for anyone to take.
+- The release is **yanked** on PyPI: the name stays reserved, but resolvers skip
+  it, so it will not be installed by accident. An exact pin
+  (`sp-local-bridge==0.2.1`) still resolves for anyone who genuinely needs it.
+
+### Note
+
+No functional changes. Use
+[super-productivity-local-gobridge](https://github.com/CameronBrooks11/super-productivity-local-gobridge)
+instead.
+
 ## [0.2.0] — 2026-05-31
 
 ### Added
