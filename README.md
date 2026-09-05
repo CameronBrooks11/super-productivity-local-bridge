@@ -1,5 +1,21 @@
 # Super Productivity Local Bridge
 
+> [!IMPORTANT]
+> **This repository is archived. It has been superseded by the [Go bridge](https://github.com/CameronBrooks11/super-productivity-local-gobridge).**
+>
+> The Go rewrite provides the same 16 operations, installs as a single binary
+> with no Python or `uv` runtime to manage, and is where all further development
+> happens. This repository is read-only: no further fixes, releases, or
+> dependency updates.
+>
+> **New and existing installations should move to
+> [super-productivity-local-gobridge](https://github.com/CameronBrooks11/super-productivity-local-gobridge)**
+> ([docs](https://cameronbrooks11.github.io/super-productivity-local-gobridge/),
+> [migration guide](https://cameronbrooks11.github.io/super-productivity-local-gobridge/migration)).
+>
+> The content below describes the final Python release (v0.2.0) and is kept for
+> reference.
+
 [![CI](https://github.com/CameronBrooks11/super-productivity-local-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/CameronBrooks11/super-productivity-local-bridge/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
